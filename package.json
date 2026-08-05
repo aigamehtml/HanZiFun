@@ -5,20 +5,24 @@
   "type": "module",
   "description": "Offline-first Chinese handwriting worksheet generator",
   "scripts": {
-    "dev": "node scripts/serve.mjs",
+    "dev": "npm run styles && node scripts/serve.mjs",
+    "styles": "tailwindcss -i ./src/tailwind.css -o ./tailwind.css --minify",
+    "styles:watch": "tailwindcss -i ./src/tailwind.css -o ./tailwind.css --watch",
     "assets": "node scripts/build-icons.mjs",
     "vendor": "node scripts/build-vendor.mjs",
     "data": "node scripts/build-stroke-data.mjs",
     "data:core": "node scripts/build-stroke-data.mjs --core-only",
-    "build": "npm run assets && npm run vendor && npm run data && node scripts/build.mjs",
-    "build:quick": "npm run assets && npm run vendor && npm run data:core && node scripts/build.mjs",
+    "build": "npm run styles && npm run assets && npm run vendor && npm run data && node scripts/build.mjs",
+    "build:quick": "npm run styles && npm run assets && npm run vendor && npm run data:core && node scripts/build.mjs",
     "check": "node --check app.js && node --check service-worker.js && node --check scripts/build-stroke-data.mjs && node --check scripts/build-icons.mjs && node --check scripts/build-vendor.mjs && node --check scripts/build.mjs && node --check scripts/serve.mjs"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
     "@zip.js/zip.js": "^2.8.34",
     "esbuild": "^0.25.0",
     "hanzi-writer-data": "2.0.1",
     "html-minifier-terser": "^7.2.0",
-    "pinyin-pro": "^3.27.0"
+    "pinyin-pro": "^3.27.0",
+    "tailwindcss": "^4.3.3"
   }
 }

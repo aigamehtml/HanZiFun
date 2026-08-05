@@ -9,6 +9,7 @@
     <link rel="manifest" href="manifest.webmanifest">
     <link rel="icon" href="icons/icon-192.png">
     <link rel="apple-touch-icon" href="icons/icon-192.png">
+    <link rel="stylesheet" href="tailwind.css">
     <link rel="stylesheet" href="style.css">
     <style id="printPageStyle"></style>
   </head>
@@ -36,31 +37,31 @@
           <button class="icon-button" id="closeSettingsBtn" type="button" aria-label="关闭设置">×</button>
         </div>
 
-        <section class="control-section">
+        <section class="control-section space-y-4">
           <div class="section-heading">
             <h2>内容</h2>
             <span id="contentStatus">准备就绪</span>
           </div>
-          <label class="field">
+          <label class="field flex flex-col gap-1.5">
             <span>内置内容</span>
             <select id="contentCategory" aria-label="内容分类"></select>
           </label>
-          <div class="inline-action">
+          <div class="inline-action grid grid-cols-[minmax(0,1fr)_auto_auto] items-stretch gap-2">
             <select id="contentTemplate" aria-label="内容模板"></select>
             <button class="button secondary" id="replaceContentBtn" type="button">替换</button>
             <button class="button quiet" id="appendContentBtn" type="button">追加</button>
           </div>
-          <label class="field">
+          <label class="field flex flex-col gap-1.5">
             <span>练习文字</span>
             <textarea id="inputText" data-setting="inputText" rows="5" spellcheck="false"></textarea>
           </label>
-          <div class="check-grid">
+          <div class="check-grid grid grid-cols-2 gap-x-3">
             <label class="check"><input id="dedupe" data-setting="dedupe" type="checkbox"> <span>自动去重</span></label>
             <label class="check"><input id="showPinyin" data-setting="showPinyin" type="checkbox"> <span>显示拼音</span></label>
           </div>
         </section>
 
-        <section class="control-section">
+        <section class="control-section space-y-4">
           <h2>模板</h2>
           <div class="segmented template-segmented" role="radiogroup" aria-label="练习模板">
             <label><input data-setting="template" type="radio" name="template" value="tian"> <span>田字描红</span></label>
@@ -70,10 +71,10 @@
           </div>
         </section>
 
-        <section class="control-section">
+        <section class="control-section space-y-4">
           <h2>纸张</h2>
-          <div class="field-grid">
-            <label class="field">
+          <div class="field-grid grid grid-cols-2 items-end gap-x-3">
+            <label class="field flex flex-col gap-1.5">
               <span>尺寸</span>
               <select id="paperSize" data-setting="paperSize">
                 <option value="A5">A5</option>
@@ -82,7 +83,7 @@
                 <option value="Letter">Letter</option>
               </select>
             </label>
-            <label class="field">
+            <label class="field flex flex-col gap-1.5">
               <span>方向</span>
               <select id="orientation" data-setting="orientation">
                 <option value="portrait">纵向</option>
@@ -90,54 +91,54 @@
               </select>
             </label>
           </div>
-          <div class="field-grid">
-            <label class="field">
+          <div class="field-grid grid grid-cols-2 items-end gap-x-3">
+            <label class="field flex flex-col gap-1.5">
               <span>页边距（mm）</span>
               <input id="marginMm" data-setting="marginMm" type="number" min="6" max="24" step="1">
             </label>
-            <label class="field">
+            <label class="field flex flex-col gap-1.5">
               <span>格子大小（mm）</span>
               <input id="cellSizeMm" data-setting="cellSizeMm" type="number" min="12" max="32" step="1">
             </label>
           </div>
-          <div class="field-grid">
-            <label class="field">
+          <div class="field-grid grid grid-cols-2 items-end gap-x-3">
+            <label class="field flex flex-col gap-1.5">
               <span>水平间距（mm）</span>
               <input id="cellGapMm" data-setting="cellGapMm" type="number" min="0" max="12" step="0.5">
             </label>
-            <label class="field">
+            <label class="field flex flex-col gap-1.5">
               <span>行间距（mm）</span>
               <input id="rowGapMm" data-setting="rowGapMm" type="number" min="0" max="16" step="0.5">
             </label>
           </div>
-          <label class="field color-field">
+          <label class="field color-field flex flex-col gap-1.5">
             <span>格线颜色</span>
             <input id="gridColor" data-setting="gridColor" type="color">
           </label>
-          <div class="field-grid blank-layout-settings">
-            <label class="field">
+          <div class="field-grid blank-layout-settings grid grid-cols-2 items-end gap-x-3">
+            <label class="field flex flex-col gap-1.5">
               <span>每行格数（0 自动）</span>
               <input id="cellsPerRow" data-setting="cellsPerRow" type="number" min="0" max="24" step="1">
             </label>
-            <label class="field">
+            <label class="field flex flex-col gap-1.5">
               <span>每页行数（0 自动）</span>
               <input id="rowsPerPage" data-setting="rowsPerPage" type="number" min="0" max="30" step="1">
             </label>
           </div>
-          <label class="field blank-only">
+          <label class="field blank-only gap-1.5">
             <span class="range-label">空白纸页数 <output id="blankPageCountOutput"></output></span>
             <input id="blankPageCount" data-setting="blankPageCount" type="range" min="1" max="12" step="1">
           </label>
         </section>
 
-        <section class="control-section practice-settings">
+        <section class="control-section practice-settings space-y-4">
           <h2>练习</h2>
-          <div class="field-grid standard-only">
-            <label class="field">
+          <div class="field-grid standard-only grid grid-cols-2 items-end gap-x-3">
+            <label class="field flex flex-col gap-1.5">
               <span>每字占用行数</span>
               <input id="rowsPerCharacter" data-setting="rowsPerCharacter" type="number" min="1" max="6" step="1">
             </label>
-            <label class="field">
+            <label class="field flex flex-col gap-1.5">
               <span>描红模式</span>
               <select id="traceMode" data-setting="traceMode">
                 <option value="full">完整字后留白</option>
@@ -145,19 +146,19 @@
               </select>
             </label>
           </div>
-          <label class="field standard-only">
+          <label class="field standard-only flex flex-col gap-1.5">
             <span class="range-label">每行练习格 <output id="practiceCountOutput"></output></span>
             <input id="practiceCount" data-setting="practiceCount" type="range" min="3" max="11" step="1">
           </label>
-          <label class="field stroke-only">
+          <label class="field stroke-only gap-1.5">
             <span class="range-label">分步图数量 <output id="stepCountOutput"></output></span>
             <input id="stepCount" data-setting="stepCount" type="range" min="3" max="12" step="1">
           </label>
-          <label class="field standard-only">
+          <label class="field standard-only flex flex-col gap-1.5">
             <span class="range-label">描红深浅 <output id="traceOpacityOutput"></output></span>
             <input id="traceOpacity" data-setting="traceOpacity" type="range" min="0.08" max="0.45" step="0.01">
           </label>
-          <div class="check-grid stroke-options">
+          <div class="check-grid stroke-options grid grid-cols-2 gap-x-3">
             <label class="check standard-only"><input id="showRowGuide" data-setting="showRowGuide" type="checkbox"> <span>格外引导字</span></label>
             <label class="check"><input id="showStrokeNumbers" data-setting="showStrokeNumbers" type="checkbox"> <span>笔顺编号</span></label>
             <label class="check"><input id="showStartDots" data-setting="showStartDots" type="checkbox"> <span>起笔点</span></label>
@@ -166,9 +167,9 @@
           </div>
         </section>
 
-        <section class="control-section">
+        <section class="control-section space-y-4">
           <h2>页眉</h2>
-          <label class="field">
+          <label class="field flex flex-col gap-1.5">
             <span>样式</span>
             <select id="headerPreset" data-setting="headerPreset">
               <option value="blank">空白版</option>
@@ -178,27 +179,27 @@
               <option value="teacher">教师版</option>
             </select>
           </label>
-          <label class="field header-field" data-header-field="title">
+          <label class="field header-field flex flex-col gap-1.5" data-header-field="title">
             <span>标题</span>
             <input id="title" data-setting="title" type="text" maxlength="30">
           </label>
-          <div class="field-grid">
-            <label class="field header-field" data-header-field="className">
+          <div class="field-grid grid grid-cols-2 items-end gap-x-3">
+            <label class="field header-field flex flex-col gap-1.5" data-header-field="className">
               <span>班级</span>
               <input id="className" data-setting="className" type="text" maxlength="20">
             </label>
-            <label class="field header-field" data-header-field="studentName">
+            <label class="field header-field flex flex-col gap-1.5" data-header-field="studentName">
               <span>姓名</span>
               <input id="studentName" data-setting="studentName" type="text" maxlength="20">
             </label>
           </div>
-          <label class="field header-field" data-header-field="date">
+          <label class="field header-field flex flex-col gap-1.5" data-header-field="date">
             <span>日期</span>
             <input id="date" data-setting="date" type="date">
           </label>
         </section>
 
-        <section class="control-section panel-actions">
+        <section class="control-section panel-actions grid grid-cols-2 gap-2">
           <button class="button secondary" id="resetBtn" type="button">恢复默认</button>
           <button class="button quiet" id="clearBtn" type="button">清空内容</button>
         </section>

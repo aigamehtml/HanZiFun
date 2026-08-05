@@ -5,6 +5,7 @@
 仓库已经从最小 Demo 进入第一版产品实现：
 
 - 纯 HTML/CSS/JavaScript 运行时，无 CDN 和远程接口
+- Tailwind CSS v4 通过官方 CLI 在构建期生成按需工具类，运行时零依赖
 - 3500 个一级常用字笔顺数据，打包为一个 ZIP 并按条目解压
 - 首屏预载 28 个基础字，HTML/CSS/JS 和首屏索引保持轻量
 - 支持田字描红、米字描红、笔顺分解、空白格纸 4 种模板
@@ -45,6 +46,7 @@ npm run build
 
 该命令依次完成：
 
+- 扫描 `index.html` 并生成最小化的 `tailwind.css`
 - 生成 192px / 512px PWA 图标
 - 从 `hanzi-writer-data@2.0.1` 提取《通用规范汉字表》一级字表 3500 字
 - 仅保留 `strokes` 与 `medians` 字段
@@ -73,7 +75,7 @@ npm run data:core
 npm run build:quick
 ```
 
-当前生产构建约 4.1MB，其中 `strokes-3500.zip` 实际约 3.76MB；压缩后的应用壳约 39KB，zip.js 约 118KB 并在需要扩展字时加载。核心 28 字不触发 ZIP 下载，首次使用其他常用字时下载 ZIP，之后只解压所需条目。
+当前生产构建约 4.1MB，其中 `strokes-3500.zip` 实际约 3.76MB；压缩后的应用壳约 44KB，zip.js 约 118KB 并在需要扩展字时加载。核心 28 字不触发 ZIP 下载，首次使用其他常用字时下载 ZIP，之后只解压所需条目。
 
 ## 1. 产品目标
 
@@ -771,11 +773,13 @@ npm 压缩包：约 12.8MB
 
 ### 8.1 前端技术
 
-建议使用纯前端方案：
+当前使用纯前端运行时：
 
 ```text
-HTML + CSS + JavaScript
+HTML + Tailwind CSS 工具类 + 项目 CSS + JavaScript
 ```
+
+Tailwind CSS v4 使用 `@tailwindcss/cli` 在构建期扫描静态 HTML，只输出实际使用的工具类。关闭 Tailwind Preflight，避免影响现有 SVG、毫米级纸张与打印样式；`style.css` 继续负责领域相关的纸张、格子、笔顺和打印规则。
 
 如果后续复杂度上升，可以使用：
 

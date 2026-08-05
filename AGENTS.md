@@ -2,7 +2,7 @@
 
 ## Project Context
 
-HanZiFun is a static, offline-first Chinese handwriting practice workbook generator for children. The current implementation is a pure HTML/CSS/JavaScript application with an npm-only build toolchain.
+HanZiFun is a static, offline-first Chinese handwriting practice workbook generator for children. The current implementation is an HTML/Tailwind CSS/custom CSS/JavaScript application with an npm-only build toolchain.
 
 Use this directory as the project root for future work:
 
@@ -13,7 +13,9 @@ Use this directory as the project root for future work:
 ## Current Implementation
 
 - Entry point: `index.html`
-- Styles: `style.css`
+- Tailwind source: `src/tailwind.css`
+- Generated Tailwind utilities: `tailwind.css`
+- Domain and print styles: `style.css`
 - App logic: `app.js`
 - Core bundled stroke data: `data/strokes.js`
 - On-demand stroke index: `data/stroke-index.js`
@@ -40,6 +42,7 @@ Templates currently implemented:
 
 - Keep the app static and offline-capable.
 - Avoid CDN/runtime network dependencies.
+- Use Tailwind v4 utilities for application UI layout. Keep Preflight disabled and retain domain-specific paper, SVG, and print rules in `style.css`.
 - Prefer SVG for character strokes, grids, arrows, and print-safe rendering.
 - Keep print layout accurate in millimeters.
 - Support paper sizes A5, A4, A3, and Letter.

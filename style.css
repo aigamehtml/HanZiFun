@@ -61,7 +61,7 @@ textarea:focus-visible {
   z-index: 50;
   top: 0;
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr) auto;
+  grid-template-columns: 380px minmax(0, 1fr) auto;
   align-items: center;
   min-height: 58px;
   padding: 0 18px;
@@ -71,7 +71,6 @@ textarea:focus-visible {
 
 .app-title,
 .app-actions,
-.inline-action,
 .zoom-control,
 .summary-group {
   display: flex;
@@ -152,7 +151,7 @@ textarea:focus-visible {
 
 .app-shell {
   display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-columns: 380px minmax(0, 1fr);
   height: calc(100vh - 58px);
 }
 
@@ -165,12 +164,12 @@ textarea:focus-visible {
 }
 
 .control-section {
-  padding: 18px 20px;
+  padding: 20px 22px;
   border-bottom: 1px solid var(--soft-line);
 }
 
 .control-section h2 {
-  margin: 0 0 14px;
+  margin: 0;
   font-size: 14px;
   letter-spacing: 0;
 }
@@ -190,16 +189,10 @@ textarea:focus-visible {
 }
 
 .field {
-  display: grid;
-  gap: 7px;
-  margin: 0 0 13px;
+  margin: 0;
   color: #41515c;
   font-size: 13px;
   font-weight: 600;
-}
-
-.field:last-child {
-  margin-bottom: 0;
 }
 
 .field input[type="text"],
@@ -256,8 +249,7 @@ textarea:focus-visible {
 }
 
 .inline-action {
-  gap: 7px;
-  margin-bottom: 13px;
+  margin: 0;
 }
 
 .inline-action select {

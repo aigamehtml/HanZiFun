@@ -11,6 +11,7 @@ const packageVersion = JSON.parse(await readFile(path.join(root, "package.json")
 const fingerprint = createHash("sha256");
 for (const file of [
   "index.html",
+  "tailwind.css",
   "style.css",
   "app.js",
   "service-worker.js",
@@ -53,6 +54,7 @@ const css = await transform(await readFile(path.join(root, "style.css"), "utf8")
   target: "es2020",
 });
 await writeFile(path.join(output, "style.css"), css.code);
+await cp(path.join(root, "tailwind.css"), path.join(output, "tailwind.css"));
 
 await minifyJavaScript("app.js", "app.js");
 await minifyJavaScript("service-worker.js", "service-worker.js", { __BUILD_VERSION__: version });
@@ -70,7 +72,7 @@ async function directorySize(directory) {
   return Number(size) * 1024;
 }
 
-const appShellFiles = ["index.html", "style.css", "app.js", "service-worker.js", "manifest.webmanifest"];
+const appShellFiles = ["index.html", "tailwind.css", "style.css", "app.js", "service-worker.js", "manifest.webmanifest"];
 let appShellBytes = 0;
 for (const file of appShellFiles) appShellBytes += (await stat(path.join(output, file))).size;
 console.log(`Built dist/: app shell ${(appShellBytes / 1024).toFixed(1)}KB, total ${((await directorySize(output)) / 1024 / 1024).toFixed(1)}MB.`);

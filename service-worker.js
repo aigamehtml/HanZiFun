@@ -2,6 +2,7 @@ const CACHE_NAME = "hanzifun-__BUILD_VERSION__";
 const APP_SHELL = [
   "./",
   "./index.html",
+  "./tailwind.css",
   "./style.css",
   "./app.js",
   "./manifest.webmanifest",
