@@ -111,6 +111,10 @@ Use standard controls that match the decision being made:
 
 Controls should be clear without instructional paragraphs.
 
+For high-frequency choices with six or fewer stable options, use one-tap segmented controls instead of select menus. This includes paper size, orientation, tracing mode, rows per character, header preset, and footer preset. Keep select menus for long or dynamic content lists, and keep number inputs for precise measurements.
+
+Orientation controls should pair a familiar page-shape icon with the text label. Icons reinforce the choice but never replace the label.
+
 ## Layout
 
 ### Desktop

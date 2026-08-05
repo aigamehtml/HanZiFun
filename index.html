@@ -74,24 +74,30 @@
 
         <section class="control-section space-y-4">
           <h2>纸张</h2>
-          <div class="field-grid grid grid-cols-2 items-end gap-x-3">
-            <label class="field flex flex-col gap-1.5">
-              <span>尺寸</span>
-              <select id="paperSize" data-setting="paperSize">
-                <option value="A5">A5</option>
-                <option value="A4">A4</option>
-                <option value="A3">A3</option>
-                <option value="Letter">Letter</option>
-              </select>
-            </label>
-            <label class="field flex flex-col gap-1.5">
-              <span>方向</span>
-              <select id="orientation" data-setting="orientation">
-                <option value="portrait">纵向</option>
-                <option value="landscape">横向</option>
-              </select>
-            </label>
+          <div class="field space-y-1.5">
+            <span>纸张尺寸</span>
+            <div class="segmented paper-size-segmented" role="radiogroup" aria-label="纸张尺寸">
+              <label><input data-setting="paperSize" type="radio" name="paperSize" value="A5"> <span>A5</span></label>
+              <label><input data-setting="paperSize" type="radio" name="paperSize" value="A4"> <span>A4</span></label>
+              <label><input data-setting="paperSize" type="radio" name="paperSize" value="A3"> <span>A3</span></label>
+              <label><input data-setting="paperSize" type="radio" name="paperSize" value="Letter"> <span>Letter</span></label>
+            </div>
           </div>
+          <div class="field space-y-1.5">
+            <span>页面方向</span>
+            <div class="segmented orientation-segmented" role="radiogroup" aria-label="页面方向">
+              <label><input data-setting="orientation" type="radio" name="orientation" value="portrait"> <span><i class="orientation-icon portrait-icon" aria-hidden="true"></i>纵向</span></label>
+              <label><input data-setting="orientation" type="radio" name="orientation" value="landscape"> <span><i class="orientation-icon landscape-icon" aria-hidden="true"></i>横向</span></label>
+            </div>
+          </div>
+          <label class="field flex flex-col gap-1.5">
+            <span>页边距（mm）</span>
+            <input id="marginMm" data-setting="marginMm" type="number" min="6" max="24" step="1">
+          </label>
+        </section>
+
+        <section class="control-section space-y-4">
+          <h2>格子</h2>
           <div class="field space-y-1.5">
             <span>格子样式</span>
             <div class="segmented grid-style-segmented" role="radiogroup" aria-label="格子样式">
@@ -101,15 +107,9 @@
           </div>
           <div class="field-grid grid grid-cols-2 items-end gap-x-3">
             <label class="field flex flex-col gap-1.5">
-              <span>页边距（mm）</span>
-              <input id="marginMm" data-setting="marginMm" type="number" min="6" max="24" step="1">
-            </label>
-            <label class="field flex flex-col gap-1.5">
               <span>格子大小（mm）</span>
               <input id="cellSizeMm" data-setting="cellSizeMm" type="number" min="12" max="32" step="1">
             </label>
-          </div>
-          <div class="field-grid grid grid-cols-2 items-end gap-x-3">
             <label class="field flex flex-col gap-1.5">
               <span>水平间距（mm）</span>
               <input id="cellGapMm" data-setting="cellGapMm" type="number" min="0" max="12" step="0.5">
@@ -151,18 +151,23 @@
 
         <section class="control-section practice-settings space-y-4">
           <h2>练习</h2>
-          <div class="field-grid standard-only grid grid-cols-2 items-end gap-x-3">
-            <label class="field flex flex-col gap-1.5">
-              <span>每字占用行数</span>
-              <input id="rowsPerCharacter" data-setting="rowsPerCharacter" type="number" min="1" max="6" step="1">
-            </label>
-            <label class="field flex flex-col gap-1.5">
-              <span>描红模式</span>
-              <select id="traceMode" data-setting="traceMode">
-                <option value="full">完整字后留白</option>
-                <option value="progressive">按笔顺累加</option>
-              </select>
-            </label>
+          <div class="field standard-only space-y-1.5">
+            <span>每字占用行数</span>
+            <div class="segmented rows-segmented" role="radiogroup" aria-label="每字占用行数">
+              <label><input data-setting="rowsPerCharacter" type="radio" name="rowsPerCharacter" value="1" min="1" max="6"> <span>1</span></label>
+              <label><input data-setting="rowsPerCharacter" type="radio" name="rowsPerCharacter" value="2" min="1" max="6"> <span>2</span></label>
+              <label><input data-setting="rowsPerCharacter" type="radio" name="rowsPerCharacter" value="3" min="1" max="6"> <span>3</span></label>
+              <label><input data-setting="rowsPerCharacter" type="radio" name="rowsPerCharacter" value="4" min="1" max="6"> <span>4</span></label>
+              <label><input data-setting="rowsPerCharacter" type="radio" name="rowsPerCharacter" value="5" min="1" max="6"> <span>5</span></label>
+              <label><input data-setting="rowsPerCharacter" type="radio" name="rowsPerCharacter" value="6" min="1" max="6"> <span>6</span></label>
+            </div>
+          </div>
+          <div class="field standard-only space-y-1.5">
+            <span>描红模式</span>
+            <div class="segmented trace-mode-segmented" role="radiogroup" aria-label="描红模式">
+              <label><input data-setting="traceMode" type="radio" name="traceMode" value="full"> <span>完整字后留白</span></label>
+              <label><input data-setting="traceMode" type="radio" name="traceMode" value="progressive"> <span>按笔顺累加</span></label>
+            </div>
           </div>
           <label class="field standard-only flex flex-col gap-1.5">
             <span class="range-label">描红深浅 <output id="traceOpacityOutput"></output></span>
@@ -179,25 +184,23 @@
 
         <section class="control-section space-y-4">
           <h2>页眉与页脚</h2>
-          <div class="field-grid grid grid-cols-2 items-end gap-x-3">
-            <label class="field flex flex-col gap-1.5">
-              <span>页眉样式</span>
-              <select id="headerPreset" data-setting="headerPreset">
-                <option value="blank">空白版</option>
-                <option value="simple">简洁版</option>
-                <option value="homework">作业版</option>
-                <option value="class">班级版</option>
-                <option value="teacher">教师版</option>
-              </select>
-            </label>
-            <label class="field flex flex-col gap-1.5">
-              <span>页脚样式</span>
-              <select id="footerPreset" data-setting="footerPreset">
-                <option value="none">无页脚</option>
-                <option value="right">右下页码</option>
-                <option value="center">居中页码</option>
-              </select>
-            </label>
+          <div class="field space-y-1.5">
+            <span>页眉样式</span>
+            <div class="segmented header-preset-segmented" role="radiogroup" aria-label="页眉样式">
+              <label><input data-setting="headerPreset" type="radio" name="headerPreset" value="blank"> <span>无</span></label>
+              <label><input data-setting="headerPreset" type="radio" name="headerPreset" value="simple"> <span>简洁</span></label>
+              <label><input data-setting="headerPreset" type="radio" name="headerPreset" value="homework"> <span>作业</span></label>
+              <label><input data-setting="headerPreset" type="radio" name="headerPreset" value="class"> <span>班级</span></label>
+              <label><input data-setting="headerPreset" type="radio" name="headerPreset" value="teacher"> <span>教师</span></label>
+            </div>
+          </div>
+          <div class="field space-y-1.5">
+            <span>页脚样式</span>
+            <div class="segmented footer-preset-segmented" role="radiogroup" aria-label="页脚样式">
+              <label><input data-setting="footerPreset" type="radio" name="footerPreset" value="none"> <span>无页脚</span></label>
+              <label><input data-setting="footerPreset" type="radio" name="footerPreset" value="right"> <span>右下页码</span></label>
+              <label><input data-setting="footerPreset" type="radio" name="footerPreset" value="center"> <span>居中页码</span></label>
+            </div>
           </div>
           <label class="field header-field flex flex-col gap-1.5" data-header-field="title">
             <span>标题</span>

@@ -698,7 +698,7 @@ function applySettingsToControls() {
   for (const control of document.querySelectorAll("[data-setting]")) {
     const key = control.dataset.setting;
     if (!(key in settings)) continue;
-    if (control.type === "checkbox" || control.type === "radio") control.checked = control.type === "checkbox" ? Boolean(settings[key]) : control.value === settings[key];
+    if (control.type === "checkbox" || control.type === "radio") control.checked = control.type === "checkbox" ? Boolean(settings[key]) : control.value === String(settings[key]);
     else control.value = settings[key];
   }
 }

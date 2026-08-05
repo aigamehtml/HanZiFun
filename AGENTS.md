@@ -50,6 +50,7 @@ Tianzi and Mizi are grid styles, not templates. The selected grid style applies 
 - Support paper sizes A5, A4, A3, and Letter.
 - Support portrait and landscape orientation.
 - All settings should update the preview immediately. The app should be WYSIWYG.
+- Use one-tap segmented controls for short, stable option sets; reserve select menus for long or dynamic lists and number inputs for exact measurements.
 - Persist settings and optionally input text in `localStorage` with a `settingsVersion`.
 - Treat mobile as a first-class responsive target: scaled paper preview, no page-level horizontal scrolling, touch-friendly controls.
 - Support PWA installation with a manifest, service worker, app icons, standalone display, and basic offline caching.
