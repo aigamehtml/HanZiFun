@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>HanZiFun</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <aside class="controls" aria-label="练习本设置">
+        <div class="brand">
+          <h1>HanZiFun</h1>
+          <p>离线中文写字练习本 Demo</p>
+        </div>
+
+        <label class="field">
+          <span>练习内容</span>
+          <textarea id="inputText" rows="5">人 口 日 月 水 火 山 田 木 永</textarea>
+        </label>
+
+        <div class="field-grid">
+          <label class="field">
+            <span>模板</span>
+            <select id="template">
+              <option value="standard">田字格描红</option>
+              <option value="mizi">米字格描红</option>
+              <option value="stroke">笔顺分解</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>格子</span>
+            <select id="gridStyle">
+              <option value="tian">田字格</option>
+              <option value="mi">米字格</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="field-grid">
+          <label class="field">
+            <span>每字练习格</span>
+            <input id="practiceCount" type="number" min="2" max="12" value="6">
+          </label>
+
+          <label class="field">
+            <span>描红透明度</span>
+            <input id="traceOpacity" type="range" min="0.08" max="0.45" step="0.01" value="0.2">
+          </label>
+        </div>
+
+        <div class="toggles">
+          <label><input id="dedupe" type="checkbox" checked> 去重</label>
+          <label><input id="showNumbers" type="checkbox" checked> 笔顺编号</label>
+          <label><input id="showArrows" type="checkbox" checked> 起笔箭头</label>
+        </div>
+
+        <div class="actions">
+          <button id="generateBtn" type="button">生成练习页</button>
+          <button id="printBtn" type="button">打印 / 保存 PDF</button>
+        </div>
+
+        <section class="note">
+          <h2>内置示例字</h2>
+          <p id="supportedChars"></p>
+          <p>笔顺数据来自 hanzi-writer-data / Make Me A Hanzi，当前 Demo 仅内置少量常用字。</p>
+        </section>
+      </aside>
+
+      <section class="preview-wrap" aria-label="A4 预览">
+        <div class="preview-toolbar">
+          <span id="summary"></span>
+        </div>
+        <div id="pages" class="pages"></div>
+      </section>
+    </main>
+
+    <script src="data/strokes.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
