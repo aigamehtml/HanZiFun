@@ -22,8 +22,7 @@ for (const file of [
   "data/strokes.js",
   "data/stroke-index.js",
   "data/pinyin.js",
-  "vendor/zip.min.js",
-  "vendor/html2canvas.min.js",
+  "vendor/fflate.min.js",
   "vendor/jspdf.umd.min.js",
 ]) {
   fingerprint.update(await readFile(path.join(root, file)));

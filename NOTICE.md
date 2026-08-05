@@ -23,16 +23,19 @@ MIT License:
 
 - https://github.com/zh-lx/pinyin-pro
 
-ZIP creation and browser-side selective extraction use zip.js, distributed under the
-BSD 3-Clause License. A copy of its license is included with the vendored runtime:
+ZIP creation uses zip.js, distributed under the BSD 3-Clause License. A copy of
+its license is included with the generated dependency notices:
 
 - https://github.com/gildas-lormeau/zip.js
 - `vendor/zip.LICENSE`
 
-Direct PDF export uses html2canvas and jsPDF, both distributed under the MIT
-License. Copies of their licenses are included with the vendored runtimes:
+Browser-side ZIP extraction uses fflate, distributed under the MIT License:
 
-- https://github.com/niklasvh/html2canvas
-- `vendor/html2canvas.LICENSE`
+- https://github.com/101arrowz/fflate
+- `vendor/fflate.LICENSE`
+
+Direct vector PDF export uses jsPDF, distributed under the MIT License. A copy
+of its license is included with the vendored runtime:
+
 - https://github.com/parallax/jsPDF
 - `vendor/jspdf.LICENSE`

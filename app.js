@@ -105,6 +105,7 @@ let renderFrame = 0;
 let markerSequence = 0;
 let installPrompt = null;
 const pendingChunks = new Map();
+const scriptLoadPromises = new Map();
 const failedChunks = new Set();
 const loadedChunks = new Map();
 const chunkCharacters = new Map();
@@ -512,7 +513,8 @@ function unsupportedCharacters(characters) {
 }
 
 function loadScript(source) {
-  return new Promise((resolve, reject) => {
+  if (scriptLoadPromises.has(source)) return scriptLoadPromises.get(source);
+  const promise = new Promise((resolve, reject) => {
     const existing = document.querySelector(`script[src="${source}"]`);
     if (existing?.dataset.loaded === "true") {
       resolve();
@@ -527,6 +529,9 @@ function loadScript(source) {
     script.onerror = reject;
     if (!existing) document.head.append(script);
   });
+  scriptLoadPromises.set(source, promise);
+  promise.catch(() => scriptLoadPromises.delete(source));
+  return promise;
 }
 
 function packForChunk(chunkId) {
@@ -586,15 +591,17 @@ async function openZipArchive(pack) {
   zipArchiveStates.set(pack.id, "loading");
   scheduleRender(false);
   const promise = (async () => {
-    await loadScript("vendor/zip.min.js");
-    window.zip.configure({ useWebWorkers: false });
+    if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = "载入解压组件…";
+    await loadScript("vendor/fflate.min.js");
+    if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = "下载笔顺字库…";
     const response = await fetch(pack.file);
     if (!response.ok) throw new Error(`Stroke ZIP request failed: ${response.status}`);
-    const reader = new window.zip.ZipReader(new window.zip.BlobReader(await response.blob()), { useWebWorkers: false });
-    const entries = new Map((await reader.getEntries()).map((entry) => [entry.filename, entry]));
+    if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = "解析笔顺字库…";
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = "读取笔顺数据…";
     zipArchiveStates.set(pack.id, "ready");
     scheduleRender(false);
-    return { entries, reader };
+    return { bytes };
   })().catch((error) => {
     zipArchiveStates.set(pack.id, "error");
     scheduleRender(false);
@@ -605,11 +612,16 @@ async function openZipArchive(pack) {
 }
 
 async function loadChunkFromZip(chunkId) {
-  const archive = await openZipArchive(packForChunk(chunkId));
-  const entry = archive.entries.get(`chunk-${chunkId}.json`);
-  if (!entry) throw new Error(`Stroke ZIP entry not found: ${chunkId}`);
-  const text = await entry.getData(new window.zip.TextWriter(), { useWebWorkers: false });
-  registerChunk(chunkId, JSON.parse(text));
+  const pack = packForChunk(chunkId);
+  const archive = await openZipArchive(pack);
+  const filename = `chunk-${chunkId}.json`;
+  if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = `解压笔顺分片 ${chunkId}…`;
+  const entries = window.fflate.unzipSync(archive.bytes, {
+    filter: (entry) => entry.name === filename,
+  });
+  const bytes = entries[filename];
+  if (!bytes) throw new Error(`Stroke ZIP entry not found: ${chunkId}`);
+  registerChunk(chunkId, JSON.parse(new TextDecoder().decode(bytes)));
 }
 
 async function loadChunkScript(chunkId) {
@@ -633,7 +645,8 @@ function ensureCharacterData(characters) {
     const promise = (USE_ZIP_PACK ? loadChunkFromZip(chunkId) : loadChunkScript(chunkId)).then(() => {
       pendingChunks.delete(chunkId);
       scheduleRender(false);
-    }).catch(() => {
+    }).catch((error) => {
+      console.error(`Stroke chunk ${chunkId} failed`, error);
       pendingChunks.delete(chunkId);
       failedChunks.add(chunkId);
       scheduleRender(false);
@@ -661,7 +674,9 @@ function prefetchUnusedStrokePacks() {
     return;
   }
 
+  const activePackIds = new Set(activeZipPacks().map((pack) => pack.id));
   for (const pack of window.HANZI_PACK_INFO?.packs || []) {
+    if (activePackIds.has(pack.id)) continue;
     if (!pack?.file || zipArchivePromises.has(pack.id)) continue;
     if (document.head.querySelector(`link[rel="prefetch"][href="${pack.file}"]`)) continue;
     const link = document.createElement("link");
@@ -838,23 +853,338 @@ function exportFilename() {
   return `${title}-${settings.paperSize}-${settings.orientation === "landscape" ? "横向" : "纵向"}.pdf`;
 }
 
-function pdfRenderScale(dimensions) {
-  const longestSidePx = Math.max(dimensions.width, dimensions.height) * CSS_PX_PER_MM;
-  return clamp(2400 / longestSidePx, 1.5, 2);
+function nextPaint() {
+  return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
 async function preparePdfPages() {
-  if (settings.template !== "blank") {
-    const characters = extractCharacters(settings.inputText, settings.template === "copy" ? false : settings.dedupe);
-    const unsupported = unsupportedCharacters(characters);
-    const printable = characters.filter((character) => !unsupported.includes(character));
-    await ensureCharacterData(printable);
-    const missing = printable.filter((character) => !window.HANZI_STROKES?.[character]);
-    if (missing.length && settings.template !== "copy") throw new Error(`笔顺数据载入失败：${missing.join(" ")}`);
-  }
+  const inputCharacters = settings.template === "blank"
+    ? []
+    : extractCharacters(settings.inputText, settings.template === "copy" ? false : settings.dedupe);
+  const unsupported = unsupportedCharacters(inputCharacters);
+  const printable = inputCharacters.filter((character) => !unsupported.includes(character));
+  els.exportPdfBtn.textContent = "准备练习字…";
+  await ensureCharacterData(printable);
   if (document.fonts?.ready) await document.fonts.ready;
   render();
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  await nextPaint();
+
+  const pageCharacters = extractCharacters([...els.pages.querySelectorAll(".page")].map((page) => page.textContent).join(""), true);
+  els.exportPdfBtn.textContent = `准备页面文字（${pageCharacters.length} 字）…`;
+  await ensureCharacterData(pageCharacters.filter((character) => window.HANZI_CHUNK_INDEX?.[character]));
+  els.exportPdfBtn.textContent = "完成页面排版…";
+  const missing = printable.filter((character) => !window.HANZI_STROKES?.[character]);
+  if (missing.length && settings.template !== "copy") throw new Error(`笔顺数据载入失败：${missing.join(" ")}`);
+  render();
+  await nextPaint();
+}
+
+function pageMetrics(page, dimensions) {
+  const rect = page.getBoundingClientRect();
+  return {
+    rect,
+    xScale: dimensions.width / rect.width,
+    yScale: dimensions.height / rect.height,
+  };
+}
+
+function relativeRect(rect, metrics) {
+  return {
+    x: (rect.left - metrics.rect.left) * metrics.xScale,
+    y: (rect.top - metrics.rect.top) * metrics.yScale,
+    width: rect.width * metrics.xScale,
+    height: rect.height * metrics.yScale,
+  };
+}
+
+function cssColor(value, opacity = 1) {
+  const match = String(value).match(/[\d.]+/g);
+  if (!match || value === "none" || value === "transparent") return null;
+  const channels = match.slice(0, 3).map(Number);
+  const alpha = clamp(opacity * (match[3] === undefined ? 1 : Number(match[3])), 0, 1);
+  return channels.map((channel) => Math.round(255 - (255 - channel) * alpha));
+}
+
+function setPdfColor(pdf, method, value, opacity = 1) {
+  const color = cssColor(value, opacity);
+  if (!color) return false;
+  pdf[method](...color);
+  return true;
+}
+
+function drawBorderLine(pdf, start, end, width, color, style) {
+  setPdfColor(pdf, "setDrawColor", color);
+  pdf.setLineWidth(width);
+  pdf.setLineCap("butt");
+  pdf.setLineDashPattern(style === "dashed" ? [width * 3, width * 2] : style === "dotted" ? [width, width * 1.8] : [], 0);
+  pdf.line(start.x, start.y, end.x, end.y);
+}
+
+function drawHtmlBorders(pdf, page, metrics) {
+  for (const element of page.querySelectorAll("*")) {
+    if (element.closest("svg")) continue;
+    const computed = getComputedStyle(element);
+    if (computed.display === "none" || computed.visibility === "hidden") continue;
+    const box = relativeRect(element.getBoundingClientRect(), metrics);
+    if (!box.width || !box.height) continue;
+    const sides = [
+      ["Top", { x: box.x, y: box.y }, { x: box.x + box.width, y: box.y }, metrics.yScale],
+      ["Right", { x: box.x + box.width, y: box.y }, { x: box.x + box.width, y: box.y + box.height }, metrics.xScale],
+      ["Bottom", { x: box.x, y: box.y + box.height }, { x: box.x + box.width, y: box.y + box.height }, metrics.yScale],
+      ["Left", { x: box.x, y: box.y }, { x: box.x, y: box.y + box.height }, metrics.xScale],
+    ];
+    for (const [side, start, end, scale] of sides) {
+      const style = computed[`border${side}Style`];
+      const width = parseFloat(computed[`border${side}Width`]) * scale;
+      if (!width || style === "none" || style === "hidden") continue;
+      drawBorderLine(pdf, start, end, width, computed[`border${side}Color`], style);
+    }
+  }
+}
+
+const parsedPathCache = new Map();
+
+function parseSvgPath(pathData) {
+  if (parsedPathCache.has(pathData)) return parsedPathCache.get(pathData);
+  const tokens = pathData.match(/[MLCQZ]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g) || [];
+  const operations = [];
+  let index = 0;
+  let current = { x: 0, y: 0 };
+  let start = { x: 0, y: 0 };
+  while (index < tokens.length) {
+    const command = tokens[index++];
+    const number = () => Number(tokens[index++]);
+    if (command === "M") {
+      current = { x: number(), y: number() };
+      start = { ...current };
+      operations.push({ op: "m", points: [current] });
+    } else if (command === "L") {
+      current = { x: number(), y: number() };
+      operations.push({ op: "l", points: [current] });
+    } else if (command === "Q") {
+      const control = { x: number(), y: number() };
+      const end = { x: number(), y: number() };
+      const first = { x: current.x + (control.x - current.x) * 2 / 3, y: current.y + (control.y - current.y) * 2 / 3 };
+      const second = { x: end.x + (control.x - end.x) * 2 / 3, y: end.y + (control.y - end.y) * 2 / 3 };
+      operations.push({ op: "c", points: [first, second, end] });
+      current = end;
+    } else if (command === "C") {
+      const first = { x: number(), y: number() };
+      const second = { x: number(), y: number() };
+      const end = { x: number(), y: number() };
+      operations.push({ op: "c", points: [first, second, end] });
+      current = end;
+    } else if (command === "Z") {
+      operations.push({ op: "h", points: [] });
+      current = { ...start };
+    } else {
+      throw new Error(`不支持的 SVG 路径命令：${command}`);
+    }
+  }
+  parsedPathCache.set(pathData, operations);
+  return operations;
+}
+
+function identityMatrix() {
+  return { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+}
+
+function multiplyMatrix(left, right) {
+  return {
+    a: left.a * right.a + left.c * right.b,
+    b: left.b * right.a + left.d * right.b,
+    c: left.a * right.c + left.c * right.d,
+    d: left.b * right.c + left.d * right.d,
+    e: left.a * right.e + left.c * right.f + left.e,
+    f: left.b * right.e + left.d * right.f + left.f,
+  };
+}
+
+function elementMatrix(element) {
+  const matrix = element.transform?.baseVal?.consolidate()?.matrix;
+  return matrix ? { a: matrix.a, b: matrix.b, c: matrix.c, d: matrix.d, e: matrix.e, f: matrix.f } : identityMatrix();
+}
+
+function mapSvgPoint(point, matrix, box) {
+  const x = matrix.a * point.x + matrix.c * point.y + matrix.e;
+  const y = matrix.b * point.x + matrix.d * point.y + matrix.f;
+  return { x: box.x + x * box.width / VIEWBOX_SIZE, y: box.y + y * box.height / VIEWBOX_SIZE };
+}
+
+function pdfPath(pathData, matrix, box) {
+  return parseSvgPath(pathData).map((operation) => ({
+    op: operation.op,
+    c: operation.points.flatMap((point) => {
+      const mapped = mapSvgPoint(point, matrix, box);
+      return [mapped.x, mapped.y];
+    }),
+  }));
+}
+
+function drawPdfPath(pdf, path, style) {
+  pdf.path(path);
+  if (style === "FD") pdf.fillStroke();
+  else if (style === "F") pdf.fill();
+  else if (style === "S") pdf.stroke();
+}
+
+function paintSvgShape(pdf, element, matrix, box, path) {
+  const computed = getComputedStyle(element);
+  const opacity = Number(computed.opacity) || 1;
+  const hasFill = setPdfColor(pdf, "setFillColor", computed.fill, opacity * (Number(computed.fillOpacity) || 1));
+  const hasStroke = setPdfColor(pdf, "setDrawColor", computed.stroke, opacity * (Number(computed.strokeOpacity) || 1));
+  const unitScale = (box.width + box.height) / (VIEWBOX_SIZE * 2);
+  pdf.setLineWidth(Math.max(0.01, parseFloat(computed.strokeWidth || "1") * unitScale));
+  pdf.setLineCap(computed.strokeLinecap || "butt");
+  pdf.setLineJoin(computed.strokeLinejoin || "miter");
+  const dash = computed.strokeDasharray === "none" ? [] : (computed.strokeDasharray.match(/[\d.]+/g) || []).map(Number).map((value) => value * unitScale);
+  pdf.setLineDashPattern(dash, 0);
+  const style = hasFill && hasStroke ? "FD" : hasFill ? "F" : hasStroke ? "S" : null;
+  if (style) drawPdfPath(pdf, path, style);
+}
+
+function drawSvgElement(pdf, element, parentMatrix, box) {
+  const tag = element.tagName.toLowerCase();
+  if (["defs", "marker"].includes(tag)) return;
+  const matrix = multiplyMatrix(parentMatrix, elementMatrix(element));
+  if (["g", "svg"].includes(tag)) {
+    for (const child of element.children) drawSvgElement(pdf, child, matrix, box);
+    return;
+  }
+  if (tag === "path" && element.hasAttribute("d")) {
+    paintSvgShape(pdf, element, matrix, box, pdfPath(element.getAttribute("d"), matrix, box));
+    return;
+  }
+  const point = (x, y) => mapSvgPoint({ x: Number(x), y: Number(y) }, matrix, box);
+  if (tag === "line") {
+    const start = point(element.getAttribute("x1"), element.getAttribute("y1"));
+    const end = point(element.getAttribute("x2"), element.getAttribute("y2"));
+    paintSvgShape(pdf, element, matrix, box, [{ op: "m", c: [start.x, start.y] }, { op: "l", c: [end.x, end.y] }]);
+    if (element.hasAttribute("marker-end")) {
+      const angle = Math.atan2(end.y - start.y, end.x - start.x);
+      const length = Math.min(box.width, box.height) * 0.035;
+      const spread = length * 0.55;
+      const back = { x: end.x - Math.cos(angle) * length, y: end.y - Math.sin(angle) * length };
+      setPdfColor(pdf, "setFillColor", getComputedStyle(element).stroke);
+      drawPdfPath(pdf, [
+        { op: "m", c: [end.x, end.y] },
+        { op: "l", c: [back.x + Math.sin(angle) * spread, back.y - Math.cos(angle) * spread] },
+        { op: "l", c: [back.x - Math.sin(angle) * spread, back.y + Math.cos(angle) * spread] },
+        { op: "h", c: [] },
+      ], "F");
+    }
+    return;
+  }
+  if (tag === "rect") {
+    const x = Number(element.getAttribute("x"));
+    const y = Number(element.getAttribute("y"));
+    const width = Number(element.getAttribute("width"));
+    const height = Number(element.getAttribute("height"));
+    const corners = [point(x, y), point(x + width, y), point(x + width, y + height), point(x, y + height)];
+    paintSvgShape(pdf, element, matrix, box, [
+      { op: "m", c: [corners[0].x, corners[0].y] },
+      ...corners.slice(1).map((corner) => ({ op: "l", c: [corner.x, corner.y] })),
+      { op: "h", c: [] },
+    ]);
+    return;
+  }
+  if (tag === "circle") {
+    const center = point(element.getAttribute("cx"), element.getAttribute("cy"));
+    const radius = Number(element.getAttribute("r")) * (box.width + box.height) / (VIEWBOX_SIZE * 2);
+    const computed = getComputedStyle(element);
+    const hasFill = setPdfColor(pdf, "setFillColor", computed.fill, Number(computed.opacity) || 1);
+    const hasStroke = setPdfColor(pdf, "setDrawColor", computed.stroke, Number(computed.opacity) || 1);
+    pdf.circle(center.x, center.y, radius, hasFill && hasStroke ? "FD" : hasFill ? "F" : "S");
+    return;
+  }
+  if (tag === "text") {
+    const computed = getComputedStyle(element);
+    const anchor = point(element.getAttribute("x"), element.getAttribute("y"));
+    setPdfColor(pdf, "setTextColor", computed.stroke === "none" ? computed.fill : computed.stroke, Number(computed.opacity) || 1);
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(parseFloat(computed.fontSize) * box.width / VIEWBOX_SIZE * 72 / 25.4);
+    pdf.text(element.textContent, anchor.x, anchor.y, { align: computed.textAnchor === "middle" ? "center" : "left", baseline: "middle" });
+  }
+}
+
+function drawPageSvgs(pdf, page, metrics) {
+  for (const source of page.querySelectorAll("svg.hanzi-cell")) {
+    const box = relativeRect(source.getBoundingClientRect(), metrics);
+    if (!box.width || !box.height) continue;
+    for (const child of source.children) drawSvgElement(pdf, child, identityMatrix(), box);
+  }
+}
+
+function drawHanziOutline(pdf, character, box, color, opacity = 1) {
+  const data = window.HANZI_STROKES?.[character];
+  if (!data) return false;
+  const size = Math.min(box.width, box.height);
+  const square = { x: box.x + (box.width - size) / 2, y: box.y + (box.height - size) / 2, width: size, height: size };
+  setPdfColor(pdf, "setFillColor", color, opacity);
+  const matrix = { a: 1, b: 0, c: 0, d: -1, e: 0, f: BASELINE };
+  for (const pathData of data.strokes) drawPdfPath(pdf, pdfPath(pathData, matrix, square), "F");
+  return true;
+}
+
+function drawToneMark(pdf, mark, box, color, width) {
+  setPdfColor(pdf, "setDrawColor", color);
+  setPdfColor(pdf, "setFillColor", color);
+  pdf.setLineWidth(width);
+  pdf.setLineCap("round");
+  if (mark === "\u0304") pdf.line(box.x + box.width * 0.2, box.y + box.height * 0.08, box.x + box.width * 0.8, box.y + box.height * 0.08);
+  if (mark === "\u0301") pdf.line(box.x + box.width * 0.43, box.y + box.height * 0.17, box.x + box.width * 0.72, box.y + box.height * 0.02);
+  if (mark === "\u0300") pdf.line(box.x + box.width * 0.28, box.y + box.height * 0.02, box.x + box.width * 0.57, box.y + box.height * 0.17);
+  if (mark === "\u030c") pdf.lines([[box.width * 0.25, box.height * 0.14], [box.width * 0.25, -box.height * 0.14]], box.x + box.width * 0.25, box.y + box.height * 0.03, [1, 1], "S");
+  if (mark === "\u0308") {
+    const radius = width * 0.75;
+    pdf.circle(box.x + box.width * 0.35, box.y + box.height * 0.08, radius, "F");
+    pdf.circle(box.x + box.width * 0.65, box.y + box.height * 0.08, radius, "F");
+  }
+}
+
+function drawPdfText(pdf, character, box, computed) {
+  const fontSize = parseFloat(computed.fontSize) / CSS_PX_PER_MM;
+  const decomposed = character.normalize("NFD");
+  const base = Array.from(decomposed).find((part) => !/\p{Mark}/u.test(part)) || character;
+  const marks = Array.from(decomposed).filter((part) => /\p{Mark}/u.test(part));
+  const baseline = box.y + (box.height - fontSize) / 2 + fontSize * 0.8;
+  setPdfColor(pdf, "setTextColor", computed.color, computed.opacity);
+  const bold = computed.fontWeight === "bold" || Number(computed.fontWeight) >= 600;
+  pdf.setFont("helvetica", `${bold ? "bold" : ""}${computed.fontStyle === "italic" ? "italic" : ""}` || "normal");
+  pdf.setFontSize(parseFloat(computed.fontSize) * 0.75);
+  pdf.text(base, box.x, baseline);
+  for (const mark of marks) drawToneMark(pdf, mark, box, computed.color, Math.max(0.12, fontSize * 0.07));
+}
+
+function drawHtmlText(pdf, page, metrics) {
+  const walker = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    const parent = node.parentElement;
+    if (!parent || parent.closest("svg")) continue;
+    const computed = getComputedStyle(parent);
+    if (computed.display === "none" || computed.visibility === "hidden" || Number(computed.opacity) === 0) continue;
+    let offset = 0;
+    for (const character of Array.from(node.data)) {
+      const end = offset + character.length;
+      if (!/\s/u.test(character)) {
+        range.setStart(node, offset);
+        range.setEnd(node, end);
+        const rect = range.getBoundingClientRect();
+        if (rect.width && rect.height) {
+          const box = relativeRect(rect, metrics);
+          const fontSize = parseFloat(computed.fontSize) / CSS_PX_PER_MM;
+          const glyphBox = { x: box.x, y: box.y + (box.height - fontSize) / 2, width: box.width, height: fontSize };
+          if (!/[\u3400-\u9fff]/u.test(character) || !drawHanziOutline(pdf, character, glyphBox, computed.color, computed.opacity)) {
+            drawPdfText(pdf, character, box, computed);
+          }
+        }
+      }
+      offset = end;
+    }
+  }
+  range.detach();
 }
 
 async function exportPdf() {
@@ -865,11 +1195,10 @@ async function exportPdf() {
   els.exportPdfBtn.textContent = "生成中…";
   try {
     await preparePdfPages();
-    await Promise.all([
-      loadScript("vendor/html2canvas.min.js"),
-      loadScript("vendor/jspdf.umd.min.js"),
-    ]);
-    if (!window.html2canvas || !window.jspdf?.jsPDF) throw new Error("PDF 组件载入失败");
+    els.exportPdfBtn.textContent = "载入 PDF 组件…";
+    await nextPaint();
+    await loadScript("vendor/jspdf.umd.min.js");
+    if (!window.jspdf?.jsPDF) throw new Error("PDF 组件载入失败");
 
     const dimensions = paperDimensions();
     const orientation = dimensions.width > dimensions.height ? "landscape" : "portrait";
@@ -880,31 +1209,22 @@ async function exportPdf() {
       compress: true,
     });
     const pages = [...els.pages.querySelectorAll(".page")];
-    const scale = pdfRenderScale(dimensions);
 
     for (const [index, page] of pages.entries()) {
-      const canvas = await window.html2canvas(page, {
-        backgroundColor: "#ffffff",
-        logging: false,
-        scale,
-        useCORS: false,
-        onclone(clonedDocument) {
-          clonedDocument.documentElement.style.setProperty("--preview-scale", "1");
-          for (const clonedPage of clonedDocument.querySelectorAll(".page")) {
-            clonedPage.style.position = "relative";
-            clonedPage.style.inset = "auto";
-            clonedPage.style.transform = "none";
-            clonedPage.style.boxShadow = "none";
-          }
-        },
-      });
+      els.exportPdfBtn.textContent = `生成第 ${index + 1} / ${pages.length} 页…`;
+      await nextPaint();
       if (index > 0) pdf.addPage([dimensions.width, dimensions.height], orientation);
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, dimensions.width, dimensions.height, undefined, "FAST");
-      canvas.width = 1;
-      canvas.height = 1;
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, dimensions.width, dimensions.height, "F");
+      const metrics = pageMetrics(page, dimensions);
+      drawHtmlBorders(pdf, page, metrics);
+      drawPageSvgs(pdf, page, metrics);
+      drawHtmlText(pdf, page, metrics);
       await new Promise((resolve) => requestAnimationFrame(resolve));
     }
 
+    els.exportPdfBtn.textContent = "保存 PDF…";
+    await nextPaint();
     pdf.save(exportFilename());
     showExportStatus(`已生成 ${pages.length} 页 PDF`);
   } catch (error) {
@@ -1025,7 +1345,7 @@ function init() {
     scheduleStrokePackPrefetch();
   });
   window.addEventListener("offline", () => scheduleRender(false));
-  window.addEventListener("load", () => scheduleStrokePackPrefetch());
+  window.addEventListener("load", () => scheduleStrokePackPrefetch(15000));
   registerPwa();
   render();
 }

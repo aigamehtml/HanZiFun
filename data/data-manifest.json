@@ -6,34 +6,70 @@
   "available": 9574,
   "missing": [],
   "chunkSize": 50,
-  "packCharacterSize": 3000,
+  "packCharacterSize": 1000,
   "archive": {
     "chunks": 192,
     "characters": 9574,
     "chunkSize": 50,
-    "packCharacterSize": 3000,
+    "packCharacterSize": 1000,
     "packs": [
       {
         "id": "000",
         "file": "data/strokes-pack-000.zip",
-        "chunks": 60,
-        "bytes": 3108295
+        "chunks": 20,
+        "bytes": 756010
       },
       {
         "id": "001",
         "file": "data/strokes-pack-001.zip",
-        "chunks": 60,
-        "bytes": 4052084
+        "chunks": 20,
+        "bytes": 1054203
       },
       {
         "id": "002",
         "file": "data/strokes-pack-002.zip",
-        "chunks": 60,
-        "bytes": 4417499
+        "chunks": 20,
+        "bytes": 1298126
       },
       {
         "id": "003",
         "file": "data/strokes-pack-003.zip",
+        "chunks": 20,
+        "bytes": 1352411
+      },
+      {
+        "id": "004",
+        "file": "data/strokes-pack-004.zip",
+        "chunks": 20,
+        "bytes": 1323775
+      },
+      {
+        "id": "005",
+        "file": "data/strokes-pack-005.zip",
+        "chunks": 20,
+        "bytes": 1375942
+      },
+      {
+        "id": "006",
+        "file": "data/strokes-pack-006.zip",
+        "chunks": 20,
+        "bytes": 1435362
+      },
+      {
+        "id": "007",
+        "file": "data/strokes-pack-007.zip",
+        "chunks": 20,
+        "bytes": 1465569
+      },
+      {
+        "id": "008",
+        "file": "data/strokes-pack-008.zip",
+        "chunks": 20,
+        "bytes": 1516612
+      },
+      {
+        "id": "009",
+        "file": "data/strokes-pack-009.zip",
         "chunks": 12,
         "bytes": 1032367
       }
