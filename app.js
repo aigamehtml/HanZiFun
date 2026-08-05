@@ -1,10 +1,16 @@
 const SETTINGS_KEY = "hanzifun.settings";
-const SETTINGS_VERSION = 4;
+const SETTINGS_VERSION = 5;
 const CSS_PX_PER_MM = 96 / 25.4;
 const VIEWBOX_SIZE = 1024;
 const BASELINE = 900;
 const MAX_CACHED_CHUNKS = 16;
 const USE_ZIP_PACK = location.protocol !== "file:";
+const STEP_CELL_MM = 16;
+const STEP_COLUMN_GAP_MM = 2.5;
+const STEP_ITEM_HEIGHT_MM = 20;
+const STROKE_CARD_MIN_HEIGHT_MM = 48;
+const STROKE_CARD_FIXED_WIDTH_MM = 38;
+const STROKE_CARD_PADDING_MM = 4;
 
 const PAPER_SIZES = {
   A5: [148, 210],
@@ -31,7 +37,6 @@ const DEFAULT_SETTINGS = {
   rowsPerCharacter: 1,
   cellGapMm: 2,
   rowGapMm: 4.5,
-  stepCount: 8,
   blankPageCount: 1,
   dedupe: true,
   showPinyin: true,
@@ -48,7 +53,7 @@ const DEFAULT_SETTINGS = {
 
 const NUMBER_FIELDS = new Set([
   "cellSizeMm", "marginMm", "rowsPerPage", "cellsPerRow",
-  "rowsPerCharacter", "cellGapMm", "rowGapMm", "stepCount", "blankPageCount",
+  "rowsPerCharacter", "cellGapMm", "rowGapMm", "blankPageCount",
   "traceOpacity", "zoom",
 ]);
 
@@ -103,6 +108,7 @@ function loadSettings() {
     if (stored && typeof stored === "object" && Number(stored.settingsVersion) <= SETTINGS_VERSION) {
       const migrated = { ...stored };
       delete migrated.practiceCount;
+      delete migrated.stepCount;
       return { ...DEFAULT_SETTINGS, ...migrated, settingsVersion: SETTINGS_VERSION };
     }
   } catch {
@@ -294,22 +300,31 @@ function makeStandardRow(row, maximumCells) {
   </article>`;
 }
 
-function selectStepIndexes(strokeCount) {
-  const count = Math.min(strokeCount, settings.stepCount);
-  if (count === strokeCount) return Array.from({ length: strokeCount }, (_, index) => index);
-  return Array.from({ length: count }, (_, index) => Math.round(index * (strokeCount - 1) / (count - 1)));
-}
-
-function makeStrokeCard(character) {
+function makeStrokeCard(layout) {
+  const { character, stepColumns, height } = layout;
   const data = window.HANZI_STROKES?.[character];
-  if (!data) return `<article class="stroke-card loading-card"><strong>${escapeHtml(character)}</strong><span>正在载入笔顺数据</span></article>`;
-  const steps = selectStepIndexes(data.strokes.length).map((step) =>
+  const cardStyle = `style="--step-columns:${stepColumns};min-height:${height}mm"`;
+  if (!data) return `<article class="stroke-card loading-card" ${cardStyle}><strong>${escapeHtml(character)}</strong><span>正在载入笔顺数据</span></article>`;
+  const steps = Array.from({ length: data.strokes.length }, (_, step) =>
     `<div class="step-item">${makeCharacterSvg(character, { mode: "step", step })}<span>${step + 1} 画</span></div>`
   ).join("");
-  return `<article class="stroke-card">
+  return `<article class="stroke-card" ${cardStyle}>
     <div class="stroke-main"><span class="pinyin">${escapeHtml(pinyinFor(character))}</span>${makeCharacterSvg(character, { trace: true, annotate: true })}<strong>${escapeHtml(character)} · ${data.strokes.length} 画</strong></div>
     <div class="step-grid">${steps}</div>
   </article>`;
+}
+
+function strokeCardLayout(character, usableWidth) {
+  const strokeCount = window.HANZI_STROKES?.[character]?.strokes.length || 1;
+  const stepAreaWidth = Math.max(STEP_CELL_MM, usableWidth - STROKE_CARD_FIXED_WIDTH_MM);
+  const stepColumns = Math.max(1, Math.floor((stepAreaWidth + STEP_COLUMN_GAP_MM) / (STEP_CELL_MM + STEP_COLUMN_GAP_MM)));
+  const stepRows = Math.ceil(strokeCount / stepColumns);
+  const stepHeight = stepRows * STEP_ITEM_HEIGHT_MM + Math.max(0, stepRows - 1) * STEP_COLUMN_GAP_MM;
+  return {
+    character,
+    stepColumns,
+    height: Math.max(STROKE_CARD_MIN_HEIGHT_MM, stepHeight + STROKE_CARD_PADDING_MM),
+  };
 }
 
 function headerFields(pageIndex, pageCount) {
@@ -379,15 +394,27 @@ function renderStandardPages(characters, dimensions) {
 }
 
 function renderStrokePages(characters, dimensions) {
+  const usableWidth = dimensions.width - settings.marginMm * 2;
   const usableHeight = dimensions.height - settings.marginMm * 2 - headerReservedHeight();
-  const cardHeight = dimensions.width > dimensions.height ? 48 : 55;
-  const automaticRows = Math.max(1, Math.floor((usableHeight + settings.rowGapMm) / (cardHeight + settings.rowGapMm)));
-  const rows = settings.rowsPerPage > 0 ? Math.min(settings.rowsPerPage, automaticRows) : automaticRows;
-  const pages = chunk(characters, rows);
+  const maximumCardsPerPage = settings.rowsPerPage > 0 ? settings.rowsPerPage : Infinity;
+  const pages = [];
+  let currentPage = [];
+  let currentHeight = 0;
+  for (const layout of characters.map((character) => strokeCardLayout(character, usableWidth))) {
+    const gap = currentPage.length ? settings.rowGapMm : 0;
+    if (currentPage.length && (currentPage.length >= maximumCardsPerPage || currentHeight + gap + layout.height > usableHeight)) {
+      pages.push(currentPage);
+      currentPage = [];
+      currentHeight = 0;
+    }
+    currentHeight += (currentPage.length ? settings.rowGapMm : 0) + layout.height;
+    currentPage.push(layout);
+  }
+  if (currentPage.length) pages.push(currentPage);
   if (!pages.length) pages.push([]);
-  const markup = pages.map((pageCharacters, pageIndex) => {
-    const body = pageCharacters.length
-      ? `<div class="stroke-list" style="--row-gap-mm:${settings.rowGapMm}mm">${pageCharacters.map(makeStrokeCard).join("")}</div>`
+  const markup = pages.map((pageLayouts, pageIndex) => {
+    const body = pageLayouts.length
+      ? `<div class="stroke-list" style="--row-gap-mm:${settings.rowGapMm}mm">${pageLayouts.map(makeStrokeCard).join("")}</div>`
       : '<div class="empty-page-message">请在左侧输入要学习笔顺的汉字</div>';
     return makePage(body, pageIndex, pages.length, dimensions, "stroke-page");
   }).join("");
@@ -645,7 +672,6 @@ function applySettingsToControls() {
 }
 
 function updateOutputs() {
-  document.querySelector("#stepCountOutput").value = `${settings.stepCount} 幅`;
   document.querySelector("#blankPageCountOutput").value = `${settings.blankPageCount} 页`;
   document.querySelector("#traceOpacityOutput").value = `${Math.round(settings.traceOpacity * 100)}%`;
   document.querySelector("#zoomOutput").value = `${settings.zoom}%`;

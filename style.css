@@ -571,12 +571,15 @@ body[data-template="stroke"] .stroke-only {
 
 .step-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(15mm, 1fr));
+  grid-template-columns: repeat(var(--step-columns, 1), 16mm);
+  align-content: center;
+  justify-content: start;
   gap: 2.5mm;
 }
 
 .step-item {
   display: grid;
+  grid-template-rows: 16mm 3mm;
   justify-items: center;
   gap: 1mm;
   color: #6a767e;
@@ -586,6 +589,10 @@ body[data-template="stroke"] .stroke-only {
 .step-item .hanzi-cell {
   width: 16mm;
   height: 16mm;
+}
+
+.step-item span {
+  line-height: 3mm;
 }
 
 .loading-card {
