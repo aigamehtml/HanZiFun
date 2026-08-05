@@ -264,7 +264,8 @@ function makeCharacterSvg(character, options = {}) {
     return `<svg class="hanzi-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="空白练习格">${grid}</svg>`;
   }
   if (!data) {
-    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<circle class="pending-ring" cx="512" cy="512" r="92"></circle></svg>`;
+    const opacity = options.trace ? settings.traceOpacity : 1;
+    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="fallback-glyph" x="512" y="512" opacity="${opacity}">${escapeHtml(character)}</text></svg>`;
   }
   const paths = renderStrokePaths(data, options);
   const annotations = options.annotate ? renderAnnotations(data) : "";
@@ -497,15 +498,10 @@ function renderCopyPages(text, dimensions) {
   return { markup, pageCount, columns, rows };
 }
 
-function renderDataStatePage(dimensions, state) {
-  const loading = state === "loading";
-  const title = loading ? "笔顺加载中…" : "笔顺数据加载失败";
-  const detail = loading ? "正在准备练习内容，请稍候" : "请检查网络连接后刷新页面重试";
-  const indicator = loading
-    ? '<span class="preview-loading-spinner" aria-hidden="true"></span>'
-    : '<span class="preview-error-mark" aria-hidden="true">!</span>';
-  const body = `<div class="preview-data-state ${state}" role="status" aria-live="polite">
-    ${indicator}<strong>${title}</strong><span>${detail}</span>
+function renderDataErrorPage(dimensions) {
+  const body = `<div class="preview-data-state error" role="status" aria-live="polite">
+    <span class="preview-error-mark" aria-hidden="true">!</span>
+    <strong>笔顺数据加载失败</strong><span>请检查网络连接后刷新页面重试</span>
   </div>`;
   return { markup: makePage(body, 0, 1, dimensions, "data-state-page"), pageCount: 1 };
 }
@@ -685,7 +681,7 @@ function render() {
     : activeFailedChunks.length ? "error" : "loading";
   let result;
 
-  if (dataState !== "ready") result = renderDataStatePage(dimensions, dataState);
+  if (dataState === "error") result = renderDataErrorPage(dimensions);
   else if (settings.template === "blank") result = renderBlankPages(dimensions);
   else if (settings.template === "copy") result = renderCopyPages(settings.inputText, dimensions);
   else if (settings.template === "stroke") result = renderStrokePages(printable, dimensions);

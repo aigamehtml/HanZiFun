@@ -199,7 +199,7 @@ When installed as a PWA:
 - Restore the user's latest settings on launch.
 - Show offline status only when it affects available data.
 - Show a prominent loading state in the browser title and preview whenever an on-demand stroke ZIP is being downloaded or decompressed.
-- Do not mix temporary font glyphs with final SVG stroke glyphs while stroke data is loading.
+- While stroke data is loading, use the browser's available regular-script font fallback inside the real grid layout and size it to approximate the final SVG glyph.
 
 ## Information Architecture
 

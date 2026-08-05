@@ -854,25 +854,22 @@ svg .order-label {
   text-anchor: middle;
 }
 
-svg .pending-ring {
-  fill: none;
-  stroke: var(--accent);
-  stroke-dasharray: 160 420;
-  stroke-linecap: round;
-  stroke-width: 28;
-  transform-origin: 512px 512px;
-  animation: loading-spin 900ms linear infinite;
-}
-
+svg .fallback-glyph,
 svg .copy-glyph {
   fill: var(--stroke-active);
-  font-family: "Kaiti SC", "STKaiti", serif;
-  font-size: 620px;
+  font-family: "Kaiti SC", STKaiti, KaiTi, "AR PL UKai CN", "Noto Serif CJK SC", serif;
+  font-size: 760px;
+  font-weight: 400;
+  dominant-baseline: central;
   text-anchor: middle;
 }
 
+svg .copy-glyph {
+  dominant-baseline: auto;
+}
+
 .pending-cell {
-  opacity: 0.62;
+  opacity: 1;
 }
 
 .preview-data-state {
@@ -895,19 +892,12 @@ svg .copy-glyph {
   font-size: 10px;
 }
 
-.preview-loading-spinner,
 .preview-error-mark {
   display: grid;
   width: 8mm;
   height: 8mm;
   place-items: center;
   border-radius: 50%;
-}
-
-.preview-loading-spinner {
-  border: 0.8mm solid #d8e5ea;
-  border-top-color: var(--accent);
-  animation: loading-spin 800ms linear infinite;
 }
 
 .preview-error-mark {
@@ -922,9 +912,7 @@ svg .copy-glyph {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #dataStatus[data-state="loading"]::before,
-  svg .pending-ring,
-  .preview-loading-spinner {
+  #dataStatus[data-state="loading"]::before {
     animation: none;
   }
 }
