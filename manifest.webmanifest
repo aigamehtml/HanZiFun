@@ -1,0 +1,15 @@
+{
+  "name": "HanZiFun 离线中文写字练习本",
+  "short_name": "HanZiFun",
+  "description": "为孩子制作可打印的中文写字练习纸",
+  "lang": "zh-CN",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef2f6",
+  "theme_color": "#176b87",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

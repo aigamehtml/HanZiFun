@@ -1,0 +1,60 @@
+import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { transform } from "esbuild";
+import { minify as minifyHtml } from "html-minifier-terser";
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const output = path.join(root, "dist");
+const packageVersion = JSON.parse(await readFile(path.join(root, "package.json"), "utf8")).version;
+const fingerprint = createHash("sha256");
+for (const file of ["index.html", "style.css", "app.js", "service-worker.js"]) {
+  fingerprint.update(await readFile(path.join(root, file)));
+}
+const version = `v${packageVersion}-${fingerprint.digest("hex").slice(0, 10)}`;
+
+await rm(output, { recursive: true, force: true });
+await mkdir(output, { recursive: true });
+
+async function minifyJavaScript(source, target, replacements = {}) {
+  let code = await readFile(path.join(root, source), "utf8");
+  for (const [key, value] of Object.entries(replacements)) code = code.replaceAll(key, value);
+  const result = await transform(code, { minify: true, target: "es2020", legalComments: "none" });
+  await writeFile(path.join(output, target), result.code);
+}
+
+const html = await minifyHtml(await readFile(path.join(root, "index.html"), "utf8"), {
+  collapseWhitespace: true,
+  removeComments: true,
+  removeRedundantAttributes: true,
+  sortAttributes: true,
+  sortClassName: true,
+});
+await writeFile(path.join(output, "index.html"), html);
+
+const css = await transform(await readFile(path.join(root, "style.css"), "utf8"), {
+  loader: "css",
+  minify: true,
+  target: "es2020",
+});
+await writeFile(path.join(output, "style.css"), css.code);
+
+await minifyJavaScript("app.js", "app.js");
+await minifyJavaScript("service-worker.js", "service-worker.js", { __BUILD_VERSION__: version });
+await cp(path.join(root, "data"), path.join(output, "data"), { recursive: true });
+await cp(path.join(root, "icons"), path.join(output, "icons"), { recursive: true });
+await cp(path.join(root, "manifest.webmanifest"), path.join(output, "manifest.webmanifest"));
+await cp(path.join(root, "NOTICE.md"), path.join(output, "NOTICE.md"));
+
+async function directorySize(directory) {
+  const { output: size } = await import("node:child_process").then(({ execFile }) =>
+    new Promise((resolve, reject) => execFile("du", ["-sk", directory], (error, stdout) => error ? reject(error) : resolve({ output: stdout.trim().split(/\s+/)[0] })))
+  );
+  return Number(size) * 1024;
+}
+
+const appShellFiles = ["index.html", "style.css", "app.js", "service-worker.js", "manifest.webmanifest"];
+let appShellBytes = 0;
+for (const file of appShellFiles) appShellBytes += (await stat(path.join(output, file))).size;
+console.log(`Built dist/: app shell ${(appShellBytes / 1024).toFixed(1)}KB, total ${((await directorySize(output)) / 1024 / 1024).toFixed(1)}MB.`);

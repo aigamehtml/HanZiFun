@@ -2,81 +2,206 @@
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#176b87">
+    <meta name="description" content="离线中文写字练习本生成器">
     <title>HanZiFun</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="icon" href="icons/icon-192.png">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
     <link rel="stylesheet" href="style.css">
+    <style id="printPageStyle"></style>
   </head>
   <body>
+    <header class="app-bar">
+      <div class="app-title">
+        <span class="app-mark" aria-hidden="true">田</span>
+        <strong>HanZiFun</strong>
+      </div>
+      <div class="app-status" id="compactStatus">A4 · 纵向 · 田字格</div>
+      <div class="app-actions">
+        <button class="button quiet install-button" id="installBtn" type="button" hidden>安装</button>
+        <button class="button quiet mobile-settings" id="settingsBtn" type="button" aria-controls="controls" aria-expanded="false">设置</button>
+        <button class="button primary" id="printBtn" type="button">打印 / PDF</button>
+      </div>
+    </header>
+
     <main class="app-shell">
-      <aside class="controls" aria-label="练习本设置">
-        <div class="brand">
-          <h1>HanZiFun</h1>
-          <p>离线中文写字练习本 Demo</p>
+      <aside class="controls" id="controls" aria-label="练习本设置">
+        <div class="drawer-head">
+          <div>
+            <strong>练习本设置</strong>
+            <span id="saveStatus">已自动保存</span>
+          </div>
+          <button class="icon-button" id="closeSettingsBtn" type="button" aria-label="关闭设置">×</button>
         </div>
 
-        <label class="field">
-          <span>练习内容</span>
-          <textarea id="inputText" rows="5">人 口 日 月 水 火 山 田 木 永</textarea>
-        </label>
-
-        <div class="field-grid">
+        <section class="control-section">
+          <div class="section-heading">
+            <h2>内容</h2>
+            <span id="contentStatus">准备就绪</span>
+          </div>
           <label class="field">
-            <span>模板</span>
-            <select id="template">
-              <option value="standard">田字格描红</option>
-              <option value="mizi">米字格描红</option>
-              <option value="stroke">笔顺分解</option>
+            <span>内置内容</span>
+            <select id="contentCategory" aria-label="内容分类"></select>
+          </label>
+          <div class="inline-action">
+            <select id="contentTemplate" aria-label="内容模板"></select>
+            <button class="button secondary" id="replaceContentBtn" type="button">替换</button>
+            <button class="button quiet" id="appendContentBtn" type="button">追加</button>
+          </div>
+          <label class="field">
+            <span>练习文字</span>
+            <textarea id="inputText" data-setting="inputText" rows="5" spellcheck="false"></textarea>
+          </label>
+          <div class="check-grid">
+            <label class="check"><input id="dedupe" data-setting="dedupe" type="checkbox"> <span>自动去重</span></label>
+            <label class="check"><input id="showPinyin" data-setting="showPinyin" type="checkbox"> <span>显示拼音</span></label>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <h2>模板</h2>
+          <div class="segmented template-segmented" role="radiogroup" aria-label="练习模板">
+            <label><input data-setting="template" type="radio" name="template" value="tian"> <span>田字描红</span></label>
+            <label><input data-setting="template" type="radio" name="template" value="mizi"> <span>米字描红</span></label>
+            <label><input data-setting="template" type="radio" name="template" value="stroke"> <span>笔顺分解</span></label>
+            <label><input data-setting="template" type="radio" name="template" value="blank"> <span>空白格纸</span></label>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <h2>纸张</h2>
+          <div class="field-grid">
+            <label class="field">
+              <span>尺寸</span>
+              <select id="paperSize" data-setting="paperSize">
+                <option value="A5">A5</option>
+                <option value="A4">A4</option>
+                <option value="A3">A3</option>
+                <option value="Letter">Letter</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>方向</span>
+              <select id="orientation" data-setting="orientation">
+                <option value="portrait">纵向</option>
+                <option value="landscape">横向</option>
+              </select>
+            </label>
+          </div>
+          <div class="field-grid">
+            <label class="field">
+              <span>页边距（mm）</span>
+              <input id="marginMm" data-setting="marginMm" type="number" min="6" max="24" step="1">
+            </label>
+            <label class="field">
+              <span>格子大小（mm）</span>
+              <input id="cellSizeMm" data-setting="cellSizeMm" type="number" min="12" max="32" step="1">
+            </label>
+          </div>
+          <div class="field-grid blank-layout-settings">
+            <label class="field">
+              <span>每行格数（0 自动）</span>
+              <input id="cellsPerRow" data-setting="cellsPerRow" type="number" min="0" max="24" step="1">
+            </label>
+            <label class="field">
+              <span>每页行数（0 自动）</span>
+              <input id="rowsPerPage" data-setting="rowsPerPage" type="number" min="0" max="30" step="1">
+            </label>
+          </div>
+          <label class="field blank-only">
+            <span class="range-label">空白纸页数 <output id="blankPageCountOutput"></output></span>
+            <input id="blankPageCount" data-setting="blankPageCount" type="range" min="1" max="12" step="1">
+          </label>
+        </section>
+
+        <section class="control-section practice-settings">
+          <h2>练习</h2>
+          <label class="field standard-only">
+            <span class="range-label">每字空白格 <output id="practiceCountOutput"></output></span>
+            <input id="practiceCount" data-setting="practiceCount" type="range" min="2" max="10" step="1">
+          </label>
+          <label class="field stroke-only">
+            <span class="range-label">分步图数量 <output id="stepCountOutput"></output></span>
+            <input id="stepCount" data-setting="stepCount" type="range" min="3" max="12" step="1">
+          </label>
+          <label class="field standard-only">
+            <span class="range-label">描红深浅 <output id="traceOpacityOutput"></output></span>
+            <input id="traceOpacity" data-setting="traceOpacity" type="range" min="0.08" max="0.45" step="0.01">
+          </label>
+          <div class="check-grid stroke-options">
+            <label class="check"><input id="showStrokeNumbers" data-setting="showStrokeNumbers" type="checkbox"> <span>笔顺编号</span></label>
+            <label class="check"><input id="showStartDots" data-setting="showStartDots" type="checkbox"> <span>起笔点</span></label>
+            <label class="check"><input id="showArrows" data-setting="showArrows" type="checkbox"> <span>方向箭头</span></label>
+            <label class="check"><input id="showGuides" data-setting="showGuides" type="checkbox"> <span>辅助线</span></label>
+          </div>
+        </section>
+
+        <section class="control-section">
+          <h2>页眉</h2>
+          <label class="field">
+            <span>样式</span>
+            <select id="headerPreset" data-setting="headerPreset">
+              <option value="blank">空白版</option>
+              <option value="simple">简洁版</option>
+              <option value="homework">作业版</option>
+              <option value="class">班级版</option>
+              <option value="teacher">教师版</option>
             </select>
           </label>
-
-          <label class="field">
-            <span>格子</span>
-            <select id="gridStyle">
-              <option value="tian">田字格</option>
-              <option value="mi">米字格</option>
-            </select>
+          <label class="field header-field" data-header-field="title">
+            <span>标题</span>
+            <input id="title" data-setting="title" type="text" maxlength="30">
           </label>
-        </div>
-
-        <div class="field-grid">
-          <label class="field">
-            <span>每字练习格</span>
-            <input id="practiceCount" type="number" min="2" max="12" value="6">
+          <div class="field-grid">
+            <label class="field header-field" data-header-field="className">
+              <span>班级</span>
+              <input id="className" data-setting="className" type="text" maxlength="20">
+            </label>
+            <label class="field header-field" data-header-field="studentName">
+              <span>姓名</span>
+              <input id="studentName" data-setting="studentName" type="text" maxlength="20">
+            </label>
+          </div>
+          <label class="field header-field" data-header-field="date">
+            <span>日期</span>
+            <input id="date" data-setting="date" type="date">
           </label>
+        </section>
 
-          <label class="field">
-            <span>描红透明度</span>
-            <input id="traceOpacity" type="range" min="0.08" max="0.45" step="0.01" value="0.2">
-          </label>
-        </div>
-
-        <div class="toggles">
-          <label><input id="dedupe" type="checkbox" checked> 去重</label>
-          <label><input id="showNumbers" type="checkbox" checked> 笔顺编号</label>
-          <label><input id="showArrows" type="checkbox" checked> 起笔箭头</label>
-        </div>
-
-        <div class="actions">
-          <button id="generateBtn" type="button">生成练习页</button>
-          <button id="printBtn" type="button">打印 / 保存 PDF</button>
-        </div>
-
-        <section class="note">
-          <h2>内置示例字</h2>
-          <p id="supportedChars"></p>
-          <p>笔顺数据来自 hanzi-writer-data / Make Me A Hanzi，当前 Demo 仅内置少量常用字。</p>
+        <section class="control-section panel-actions">
+          <button class="button secondary" id="resetBtn" type="button">恢复默认</button>
+          <button class="button quiet" id="clearBtn" type="button">清空内容</button>
         </section>
       </aside>
 
-      <section class="preview-wrap" aria-label="A4 预览">
+      <button class="drawer-backdrop" id="drawerBackdrop" type="button" aria-label="关闭设置" tabindex="-1"></button>
+
+      <section class="preview-wrap" aria-label="纸张预览">
         <div class="preview-toolbar">
-          <span id="summary"></span>
+          <div class="summary-group">
+            <strong id="summary">正在生成预览</strong>
+            <span id="dataStatus">本地数据</span>
+          </div>
+          <label class="zoom-control">
+            <span>缩放</span>
+            <input id="zoom" data-setting="zoom" type="range" min="35" max="100" step="5">
+            <output id="zoomOutput">70%</output>
+          </label>
         </div>
-        <div id="pages" class="pages"></div>
+        <div id="pages" class="pages" aria-live="polite"></div>
       </section>
     </main>
 
+    <div class="print-note" id="printNote" hidden>
+      打印时请选择与预览一致的纸张，并使用“实际大小 / 100%”，关闭浏览器页眉页脚。
+    </div>
+
+    <script src="data/content-templates.js"></script>
     <script src="data/strokes.js"></script>
+    <script src="data/stroke-index.js"></script>
+    <script src="data/pinyin.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

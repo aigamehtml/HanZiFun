@@ -2,7 +2,7 @@
 
 ## Project Context
 
-HanZiFun is a static, offline-first Chinese handwriting practice workbook generator for children. The current MVP is a pure HTML/CSS/JavaScript demo that renders printable practice pages with stroke-order hints.
+HanZiFun is a static, offline-first Chinese handwriting practice workbook generator for children. The current implementation is a pure HTML/CSS/JavaScript application with an npm-only build toolchain.
 
 Use this directory as the project root for future work:
 
@@ -10,27 +10,29 @@ Use this directory as the project root for future work:
 /Users/rickytan/Code/HanZiFun
 ```
 
-## Current Demo
+## Current Implementation
 
 - Entry point: `index.html`
 - Styles: `style.css`
 - App logic: `app.js`
-- Bundled stroke data: `data/strokes.js`
+- Core bundled stroke data: `data/strokes.js`
+- On-demand stroke index: `data/stroke-index.js`
+- Generated stroke chunks: `data/characters/`
+- Content presets: `data/content-templates.js`
+- Data/build scripts: `scripts/`
+- Production output: `dist/` (ignored by Git)
 - Product requirements: `README.md`
 - Design philosophy and visual rules: `DESIGN.md`
 - Data attribution: `NOTICE.md`
 
-The demo currently supports 10 built-in characters:
-
-```text
-人 口 日 月 水 火 山 田 木 永
-```
+The app preloads 28 core characters and supports all 3500 first-level common characters through 70 on-demand chunks.
 
 Templates currently implemented:
 
 - Tianzi grid tracing
 - Mizi grid tracing
 - Stroke-order breakdown
+- Blank Tianzi/Mizi practice paper
 
 ## Technical Direction
 
@@ -59,7 +61,13 @@ Templates currently implemented:
 - Content should come from both manual input and built-in templates. Initial template categories: Tang poems, San Zi Jing sections, elementary common character groups, basic character structures, and common words.
 - Built-in content template insertion should support replacing current input by default and appending as an option.
 
-## Local Run
+## Local Run And Build
+
+Install dependencies once:
+
+```bash
+npm install
+```
 
 The app can be opened directly:
 
@@ -67,10 +75,10 @@ The app can be opened directly:
 open index.html
 ```
 
-For local HTTP testing:
+For local HTTP and PWA testing:
 
 ```bash
-python3 -m http.server 8765
+npm run dev
 ```
 
 Then visit:
@@ -93,25 +101,26 @@ GitHub Pages URL:
 https://rickytan.cn/HanZiFun/
 ```
 
-Pages is configured from the `main` branch root directory. The repo was made public because the current GitHub plan did not support Pages for a private repo.
+GitHub Actions runs `npm ci` and `npm run build`, uploads `dist/`, and deploys it to Pages. The repository must use GitHub Actions as its Pages build source.
 
 ## Validation Checklist
 
 Before committing meaningful changes:
 
 ```bash
-node --check app.js
+npm run check
+npm run build
 ```
 
 For static serving checks:
 
 ```bash
-python3 -m http.server 8765
+npm run dev
 curl -I http://localhost:8765/
-curl -I http://localhost:8765/data/strokes.js
+curl -I http://localhost:8765/data/stroke-index.js
 ```
 
-For render sanity, verify that default input generates pages and SVG cells. The previous MVP baseline generated:
+For render sanity, verify all four templates, on-demand loading, local persistence, A5/A4/A3/Letter portrait and landscape, and mobile settings drawer behavior. The default baseline remains:
 
 ```text
 10 characters, 2 pages, 70 SVG cells
@@ -121,7 +130,7 @@ For render sanity, verify that default input generates pages and SVG cells. The 
 
 - Default branch: `main`
 - Current remote: `git@github.com:rickytan/HanZiFun.git`
-- Last known MVP commit: `4d00344 Add offline handwriting demo`
+- Last known requirements commit: `8b5c599 Add content templates and mobile PWA requirements`
 
 Keep changes scoped and commit intentionally. Do not remove bundled data attribution.
 Read `DESIGN.md` before making substantial UI changes.
