@@ -90,10 +90,14 @@
               <label><input data-setting="orientation" type="radio" name="orientation" value="landscape"> <span><i class="orientation-icon landscape-icon" aria-hidden="true"></i>横向</span></label>
             </div>
           </div>
-          <label class="field flex flex-col gap-1.5">
-            <span>页边距（mm）</span>
-            <input id="marginMm" data-setting="marginMm" type="number" min="6" max="24" step="1">
-          </label>
+          <div class="field flex flex-col gap-1.5">
+            <label for="marginMm">页边距（mm）</label>
+            <div class="stepper" data-stepper>
+              <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减小页边距">−</button>
+              <input id="marginMm" class="stepper-input" data-setting="marginMm" type="number" min="6" max="24" step="1">
+              <button class="stepper-button" type="button" data-stepper-action="increment" aria-label="增大页边距">+</button>
+            </div>
+          </div>
         </section>
 
         <section class="control-section space-y-4">
@@ -106,18 +110,30 @@
             </div>
           </div>
           <div class="field-grid grid grid-cols-2 items-end gap-x-3">
-            <label class="field flex flex-col gap-1.5">
-              <span>格子大小（mm）</span>
-              <input id="cellSizeMm" data-setting="cellSizeMm" type="number" min="12" max="32" step="1">
-            </label>
-            <label class="field flex flex-col gap-1.5">
-              <span>水平间距（mm）</span>
-              <input id="cellGapMm" data-setting="cellGapMm" type="number" min="0" max="12" step="0.5">
-            </label>
-            <label class="field flex flex-col gap-1.5">
-              <span>行间距（mm）</span>
-              <input id="rowGapMm" data-setting="rowGapMm" type="number" min="0" max="16" step="0.5">
-            </label>
+            <div class="field flex flex-col gap-1.5">
+              <label for="cellSizeMm">格子大小（mm）</label>
+              <div class="stepper" data-stepper>
+                <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减小格子">−</button>
+                <input id="cellSizeMm" class="stepper-input" data-setting="cellSizeMm" type="number" min="12" max="32" step="1">
+                <button class="stepper-button" type="button" data-stepper-action="increment" aria-label="增大格子">+</button>
+              </div>
+            </div>
+            <div class="field flex flex-col gap-1.5">
+              <label for="cellGapMm">水平间距（mm）</label>
+              <div class="stepper" data-stepper>
+                <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减小水平间距">−</button>
+                <input id="cellGapMm" class="stepper-input" data-setting="cellGapMm" type="number" min="0" max="12" step="0.5">
+                <button class="stepper-button" type="button" data-stepper-action="increment" aria-label="增大水平间距">+</button>
+              </div>
+            </div>
+            <div class="field flex flex-col gap-1.5">
+              <label for="rowGapMm">行间距（mm）</label>
+              <div class="stepper" data-stepper>
+                <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减小行间距">−</button>
+                <input id="rowGapMm" class="stepper-input" data-setting="rowGapMm" type="number" min="0" max="16" step="0.5">
+                <button class="stepper-button" type="button" data-stepper-action="increment" aria-label="增大行间距">+</button>
+              </div>
+            </div>
           </div>
           <div class="grid-color-grid">
             <label class="field color-field flex flex-col gap-1.5">
@@ -134,19 +150,31 @@
             </label>
           </div>
           <div class="field-grid blank-layout-settings grid grid-cols-2 items-end gap-x-3">
-            <label class="field flex flex-col gap-1.5">
-              <span>每行格数（0 自动）</span>
-              <input id="cellsPerRow" data-setting="cellsPerRow" type="number" min="0" max="24" step="1">
-            </label>
-            <label class="field flex flex-col gap-1.5">
-              <span>每页行数（0 自动）</span>
-              <input id="rowsPerPage" data-setting="rowsPerPage" type="number" min="0" max="30" step="1">
-            </label>
+            <div class="field flex flex-col gap-1.5">
+              <label for="cellsPerRow">每行格数（0 自动）</label>
+              <div class="stepper" data-stepper>
+                <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减少每行格数">−</button>
+                <input id="cellsPerRow" class="stepper-input" data-setting="cellsPerRow" type="number" min="0" max="24" step="1">
+                <button class="stepper-button" type="button" data-stepper-action="increment" aria-label="增加每行格数">+</button>
+              </div>
+            </div>
+            <div class="field flex flex-col gap-1.5">
+              <label for="rowsPerPage">每页行数（0 自动）</label>
+              <div class="stepper" data-stepper>
+                <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减少每页行数">−</button>
+                <input id="rowsPerPage" class="stepper-input" data-setting="rowsPerPage" type="number" min="0" max="30" step="1">
+                <button class="stepper-button" type="button" data-stepper-action="increment" aria-label="增加每页行数">+</button>
+              </div>
+            </div>
           </div>
-          <label class="field blank-only gap-1.5">
-            <span class="range-label">空白纸页数 <output id="blankPageCountOutput"></output></span>
-            <input id="blankPageCount" data-setting="blankPageCount" type="range" min="1" max="12" step="1">
-          </label>
+          <div class="field blank-only gap-1.5">
+            <label for="blankPageCount">空白纸页数</label>
+            <div class="stepper" data-stepper>
+              <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减少空白纸页数">−</button>
+              <input id="blankPageCount" class="stepper-input" data-setting="blankPageCount" type="number" min="1" max="12" step="1">
+              <button class="stepper-button" type="button" data-stepper-action="increment" aria-label="增加空白纸页数">+</button>
+            </div>
+          </div>
         </section>
 
         <section class="control-section practice-settings space-y-4">

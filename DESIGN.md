@@ -106,7 +106,7 @@ Use standard controls that match the decision being made:
 - textarea for practice content
 - toggles/checkboxes for binary options
 - sliders for opacity and line darkness
-- number inputs or steppers for page count, grid size, row count, and practice count
+- steppers with decrement button, directly editable number input, and increment button for discrete numeric settings
 - select menus only when there are many options
 
 Controls should be clear without instructional paragraphs.
@@ -114,6 +114,8 @@ Controls should be clear without instructional paragraphs.
 For high-frequency choices with six or fewer stable options, use one-tap segmented controls instead of select menus. This includes paper size, orientation, tracing mode, rows per character, header preset, and footer preset. Keep select menus for long or dynamic content lists, and keep number inputs for precise measurements.
 
 Orientation controls should pair a familiar page-shape icon with the text label. Icons reinforce the choice but never replace the label.
+
+Numeric steppers should keep a stable three-column layout: minus, editable value, plus. Disable the relevant button at min/max boundaries, preserve decimal steps, and keep each control at least 44px tall on touch screens. Continuous visual values such as opacity and preview zoom remain sliders.
 
 ## Layout
 
