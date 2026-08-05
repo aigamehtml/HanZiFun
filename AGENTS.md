@@ -42,6 +42,8 @@ Templates currently implemented:
 - Support portrait and landscape orientation.
 - All settings should update the preview immediately. The app should be WYSIWYG.
 - Persist settings and optionally input text in `localStorage` with a `settingsVersion`.
+- Treat mobile as a first-class responsive target: scaled paper preview, no page-level horizontal scrolling, touch-friendly controls.
+- Support PWA installation with a manifest, service worker, app icons, standalone display, and basic offline caching.
 - Stroke data comes from `hanzi-writer-data`, derived from Make Me A Hanzi. Preserve attribution and license notes when expanding data.
 
 ## Product Decisions
@@ -54,6 +56,8 @@ Templates currently implemented:
 - Blank practice paper does not require input text or stroke data. It should generate printable Tianzi or Mizi grid pages directly from layout settings.
 - Stroke order is for print, not animation-first. Prioritize static clarity: numbers, start dots, direction arrows, and step breakdowns.
 - Header information should be template-driven and optional: blank, simple title, homework, class, and teacher-style variants.
+- Content should come from both manual input and built-in templates. Initial template categories: Tang poems, San Zi Jing sections, elementary common character groups, basic character structures, and common words.
+- Built-in content template insertion should support replacing current input by default and appending as an option.
 
 ## Local Run
 

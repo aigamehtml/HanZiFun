@@ -13,6 +13,8 @@ Right: real paper preview
 
 Users should understand the workflow in a few seconds: type characters, adjust options, inspect the paper, print or save as PDF.
 
+The app should also work well when installed to a phone home screen as a PWA. Mobile is not a separate product, but the layout must adapt deliberately.
+
 ## Design Principles
 
 ### 1. The Paper Is the Product
@@ -39,6 +41,7 @@ There should be no required "Generate" action. A refresh or regenerate button ma
 Examples:
 
 - Typing characters updates the preview.
+- Choosing a built-in content template updates or appends to the input.
 - Changing template updates the preview.
 - Switching A5/A4/A3/Letter changes paper size.
 - Switching portrait/landscape changes paper orientation.
@@ -84,6 +87,7 @@ Orientation: portrait
 Header: homework
 Grid size: medium
 Input: small demo character set
+Content templates: available but not intrusive
 Stroke numbers: on
 Start dots: on
 Direction arrows: on
@@ -146,16 +150,46 @@ Preview workspace:
 
 ### Mobile
 
-Mobile is secondary but should remain usable.
+Mobile must be intentionally designed. It should not be a squeezed desktop layout.
 
 Recommended behavior:
 
-- Settings stack above preview.
+- Default view prioritizes paper preview.
 - Preview scales down while preserving paper ratio.
+- Settings open from a bottom panel, drawer, or grouped bottom tabs.
 - Print button remains easy to find.
-- Avoid tiny controls.
+- Controls are at least 44px tall.
+- No page-level horizontal scrolling.
+- Multi-page preview scrolls vertically.
+- Landscape paper still fits within the viewport.
+- Settings groups can collapse to reduce vertical overload.
 
-Mobile does not need to be the best editing experience, but it should not break.
+Recommended mobile structure:
+
+```text
+┌────────────────────┐
+│ HanZiFun      Print│
+├────────────────────┤
+│                    │
+│   scaled paper     │
+│                    │
+├────────────────────┤
+│ Content Template ⚙ │
+└────────────────────┘
+```
+
+The mobile editing experience should feel like a lightweight app after being added to the home screen.
+
+### PWA Mode
+
+When installed as a PWA:
+
+- Use standalone display.
+- Keep the same design language as the browser version.
+- Avoid browser-only assumptions.
+- Keep a compact app bar visible.
+- Restore the user's latest settings on launch.
+- Show offline status only when it affects available data.
 
 ## Information Architecture
 
@@ -164,8 +198,23 @@ Recommended left-panel order:
 ### Content
 
 - Practice text
+- Content template library
+- Template category
+- Template item
+- Replace current content
+- Append to current content
 - Deduplicate characters
 - Missing character status
+
+Built-in content templates should be discoverable without dominating the panel. The textarea remains the source of truth after a template is inserted.
+
+Template categories:
+
+- Tang poems
+- San Zi Jing sections
+- Elementary common characters
+- Basic character structures
+- Common words
 
 ### Template
 
