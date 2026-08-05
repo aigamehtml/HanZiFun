@@ -1,12 +1,42 @@
 {
   "source": "hanzi-writer-data@2.0.1",
-  "requested": 3500,
-  "available": 3500,
+  "requested": 9574,
+  "commonCharacters": 3500,
+  "expandedBy": "All single-codepoint JSON data files from upstream, with the 3500 common characters kept first",
+  "available": 9574,
   "missing": [],
   "chunkSize": 50,
+  "packCharacterSize": 3000,
   "archive": {
-    "file": "data/strokes-3500.zip",
-    "chunks": 70,
-    "bytes": 3937981
+    "chunks": 192,
+    "characters": 9574,
+    "chunkSize": 50,
+    "packCharacterSize": 3000,
+    "packs": [
+      {
+        "id": "000",
+        "file": "data/strokes-pack-000.zip",
+        "chunks": 60,
+        "bytes": 3108295
+      },
+      {
+        "id": "001",
+        "file": "data/strokes-pack-001.zip",
+        "chunks": 60,
+        "bytes": 4052084
+      },
+      {
+        "id": "002",
+        "file": "data/strokes-pack-002.zip",
+        "chunks": 60,
+        "bytes": 4417499
+      },
+      {
+        "id": "003",
+        "file": "data/strokes-pack-003.zip",
+        "chunks": 12,
+        "bytes": 1032367
+      }
+    ]
   }
 }

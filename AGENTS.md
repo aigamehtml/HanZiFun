@@ -20,7 +20,7 @@ Use this directory as the project root for future work:
 - Core bundled stroke data: `data/strokes.js`
 - On-demand stroke index: `data/stroke-index.js`
 - Generated stroke chunks: `data/characters/`
-- Production stroke archive: `data/strokes-3500.zip`
+- Production stroke archives: `data/strokes-pack-NNN.zip`
 - Vendored ZIP runtime: `vendor/zip.min.js`
 - Content presets: `data/content-templates.js`
 - Data/build scripts: `scripts/`
@@ -29,7 +29,7 @@ Use this directory as the project root for future work:
 - Design philosophy and visual rules: `DESIGN.md`
 - Data attribution: `NOTICE.md`
 
-The app preloads 28 core characters and supports all 3500 first-level common characters through one ZIP containing 70 JSON entries. HTTP/PWA loads the ZIP and selectively extracts entries with zip.js; `file://` falls back to generated script chunks.
+The app preloads 28 core characters and supports all 9574 single-codepoint upstream characters through multiple ZIP packs. Each JSON chunk contains 50 characters; each ZIP pack contains up to 3000 characters. The first 3500 come from the first-level common-character table; the remaining characters are upstream single-codepoint data sorted by Unicode code point. HTTP/PWA loads only the pack containing the needed chunk and selectively extracts entries with zip.js; `file://` falls back to generated script chunks.
 
 Templates currently implemented:
 
@@ -51,6 +51,7 @@ Tianzi and Mizi are grid styles, not templates. The selected grid style applies 
 - Support portrait and landscape orientation.
 - All settings should update the preview immediately. The app should be WYSIWYG.
 - Use one-tap segmented controls for short, stable option sets; reserve select menus for long or dynamic lists and number inputs for exact measurements.
+- Use minus/input/plus steppers for discrete numeric settings, preserving direct entry, bounds, decimal steps, and mobile touch targets. Keep continuous visual adjustments as sliders.
 - Persist settings and optionally input text in `localStorage` with a `settingsVersion`.
 - Treat mobile as a first-class responsive target: scaled paper preview, no page-level horizontal scrolling, touch-friendly controls.
 - Support PWA installation with a manifest, service worker, app icons, standalone display, and basic offline caching.
@@ -59,9 +60,9 @@ Tianzi and Mizi are grid styles, not templates. The selected grid style applies 
 ## Product Decisions
 
 - Target users: both parents and teachers.
-- Target character coverage: 3500 common Chinese characters.
-- Do not bundle all 3500 characters into the main payload. A rough `hanzi-writer-data@2.0.1` estimate showed a 3500-character gzip sample around 3.95MB, above the 200KB direct-bundle threshold.
-- Preferred data strategy: keep a tiny built-in set, fetch one 3.76MB ZIP on first extended-character use, selectively extract JSON entries with zip.js, keep a 16-chunk LRU in memory, and let the Service Worker cache the ZIP. Preserve script chunks for direct `file://` use, but exclude them from `dist/`.
+- Target character coverage: all single-codepoint characters available in `hanzi-writer-data@2.0.1`.
+- Do not bundle the full upstream character data into the main payload. A rough `hanzi-writer-data@2.0.1` estimate showed a 3500-character gzip sample around 3.95MB, above the 200KB direct-bundle threshold.
+- Preferred data strategy: keep a tiny built-in set, split the full upstream data into ZIP packs of up to 3000 characters, selectively fetch the pack containing the needed chunk, extract JSON entries with zip.js, keep a 16-chunk LRU in memory, and let the Service Worker cache fetched ZIP packs. Preserve script chunks for direct `file://` use, but exclude them from `dist/`.
 - Required formal templates: tracing practice, stroke-order breakdown, blank practice paper, and article tracing. Tianzi/Mizi is an independent grid-style setting shared by all templates.
 - Blank practice paper does not require input text or stroke data. It should generate printable Tianzi or Mizi grid pages directly from layout settings.
 - Stroke order is for print, not animation-first. Prioritize static clarity: numbers, start dots, direction arrows, and step breakdowns.

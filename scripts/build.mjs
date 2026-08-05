@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,10 +22,12 @@ for (const file of [
   "data/strokes.js",
   "data/stroke-index.js",
   "data/pinyin.js",
-  "data/strokes-3500.zip",
   "vendor/zip.min.js",
 ]) {
   fingerprint.update(await readFile(path.join(root, file)));
+}
+for (const file of (await readdir(path.join(root, "data"))).filter((file) => /^strokes-pack-\d+\.zip$/.test(file)).sort()) {
+  fingerprint.update(await readFile(path.join(root, "data", file)));
 }
 const version = `v${packageVersion}-${fingerprint.digest("hex").slice(0, 10)}`;
 

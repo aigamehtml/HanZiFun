@@ -9,8 +9,11 @@ const sourceDir = path.join(root, "node_modules", "hanzi-writer-data");
 const dataDir = path.join(root, "data");
 const chunkDir = path.join(dataDir, "characters");
 const commonListPath = path.join(dataDir, "common-3500.txt");
+const commonCharacterCount = 3500;
 const coreCharacters = Array.from("人口日月水火山田木永一二三上下大小中天地你我他好学春风雨");
 const chunkSize = 50;
+const packCharacterSize = 3000;
+const chunksPerPack = packCharacterSize / chunkSize;
 const coreOnly = process.argv.includes("--core-only");
 const archiveDate = new Date("2026-01-01T00:00:00.000Z");
 
@@ -34,6 +37,15 @@ async function removeOldChunks() {
   );
 }
 
+async function removeOldArchives() {
+  const files = await readdir(dataDir);
+  await Promise.all(
+    files
+      .filter((file) => /^strokes-(?:\d+|pack-\d+)\.zip$/.test(file))
+      .map((file) => unlink(path.join(dataDir, file)))
+  );
+}
+
 async function buildCoreBundle() {
   const entries = {};
   for (const character of coreCharacters) {
@@ -44,19 +56,46 @@ async function buildCoreBundle() {
   return Object.keys(entries).length;
 }
 
+async function listSourceCharacters() {
+  const files = await readdir(sourceDir);
+  return files
+    .filter((file) => file.endsWith(".json") && file !== "package.json")
+    .map((file) => file.replace(/\.json$/, ""))
+    .filter((character) => Array.from(character).length === 1)
+    .sort((a, b) => a.codePointAt(0) - b.codePointAt(0));
+}
+
 async function buildFullData() {
   const source = await readFile(commonListPath, "utf8");
-  const characters = Array.from(source.matchAll(/[\u3400-\u9fff]/gu), (match) => match[0]);
-  if (characters.length !== 3500 || new Set(characters).size !== 3500) {
-    throw new Error(`common-3500.txt should contain 3500 unique characters; found ${characters.length}`);
+  const commonCharacters = Array.from(source.matchAll(/[\u3400-\u9fff]/gu), (match) => match[0]);
+  if (commonCharacters.length !== commonCharacterCount || new Set(commonCharacters).size !== commonCharacterCount) {
+    throw new Error(`common-3500.txt should contain ${commonCharacterCount} unique characters; found ${commonCharacters.length}`);
   }
 
+  const sourceCharacters = await listSourceCharacters();
+  const characters = [...new Set([...commonCharacters, ...sourceCharacters])];
+
   await removeOldChunks();
+  await removeOldArchives();
   const index = {};
   const pinyinMap = {};
   const missing = [];
-  const zipWriter = new ZipWriter(new BlobWriter("application/zip"), { useWebWorkers: false });
+  const packs = [];
   let written = 0;
+  let zipWriter = null;
+  let packChunks = 0;
+
+  async function closePack() {
+    if (!zipWriter) return;
+    const archive = await zipWriter.close();
+    const archiveBuffer = Buffer.from(await archive.arrayBuffer());
+    const packId = String(packs.length).padStart(3, "0");
+    const file = `data/strokes-pack-${packId}.zip`;
+    await writeFile(path.join(dataDir, `strokes-pack-${packId}.zip`), archiveBuffer);
+    packs.push({ id: packId, file, chunks: packChunks, bytes: archiveBuffer.length });
+    zipWriter = null;
+    packChunks = 0;
+  }
 
   for (let offset = 0; offset < characters.length; offset += chunkSize) {
     const chunkId = String(offset / chunkSize).padStart(3, "0");
@@ -80,18 +119,26 @@ async function buildFullData() {
       "",
     ].join("\n");
     await writeFile(path.join(chunkDir, `chunk-${chunkId}.js`), script);
+    if (!zipWriter) zipWriter = new ZipWriter(new BlobWriter("application/zip"), { useWebWorkers: false });
     await zipWriter.add(`chunk-${chunkId}.json`, new TextReader(JSON.stringify(chunk)), {
       level: 9,
       lastModDate: archiveDate,
       extendedTimestamp: false,
       useWebWorkers: false,
     });
+    packChunks += 1;
+    if (packChunks >= chunksPerPack) await closePack();
   }
 
-  const archive = await zipWriter.close();
-  const archiveBuffer = Buffer.from(await archive.arrayBuffer());
-  const packInfo = { file: "data/strokes-3500.zip", chunks: Math.ceil(characters.length / chunkSize), bytes: archiveBuffer.length };
-  await writeFile(path.join(dataDir, "strokes-3500.zip"), archiveBuffer);
+  await closePack();
+
+  const packInfo = {
+    chunks: Math.ceil(characters.length / chunkSize),
+    characters: characters.length,
+    chunkSize,
+    packCharacterSize,
+    packs,
+  };
   await writeFile(
     path.join(dataDir, "stroke-index.js"),
     `window.HANZI_CHUNK_INDEX=${toScriptValue(index)};window.HANZI_PACK_INFO=${toScriptValue(packInfo)};\n`
@@ -99,9 +146,9 @@ async function buildFullData() {
   await writeFile(path.join(dataDir, "pinyin.js"), `window.HANZI_PINYIN=${toScriptValue(pinyinMap)};\n`);
   await writeFile(
     path.join(dataDir, "data-manifest.json"),
-    `${JSON.stringify({ source: "hanzi-writer-data@2.0.1", requested: 3500, available: written, missing, chunkSize, archive: packInfo }, null, 2)}\n`
+    `${JSON.stringify({ source: "hanzi-writer-data@2.0.1", requested: characters.length, commonCharacters: commonCharacterCount, expandedBy: "All single-codepoint JSON data files from upstream, with the 3500 common characters kept first", available: written, missing, chunkSize, packCharacterSize, archive: packInfo }, null, 2)}\n`
   );
-  return { written, missing, archiveBytes: archiveBuffer.length };
+  return { written, missing, archiveBytes: packs.reduce((total, pack) => total + pack.bytes, 0), packs: packs.length };
 }
 
 await mkdir(dataDir, { recursive: true });
@@ -111,6 +158,6 @@ if (coreOnly) {
 } else {
   const result = await buildFullData();
   console.log(`Built ${coreCount} core characters and ${result.written} on-demand characters in chunks of ${chunkSize}.`);
-  console.log(`Built strokes-3500.zip (${(result.archiveBytes / 1024 / 1024).toFixed(2)}MB).`);
+  console.log(`Built ${result.packs} stroke ZIP packs (${(result.archiveBytes / 1024 / 1024).toFixed(2)}MB total).`);
   if (result.missing.length) console.warn(`Missing source data: ${result.missing.join(" ")}`);
 }

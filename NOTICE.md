@@ -9,11 +9,14 @@ This project includes generated character stroke-data chunks from `hanzi-writer-
 
 The application code in this repository is separate from the bundled character data.
 
-The 3500-character build list follows the first-level character table from the 2013
-Table of General Standard Chinese Characters. The machine-readable list used by the
-build script was transcribed and published here:
+The base 3500-character build list follows the first-level character table from the
+2013 Table of General Standard Chinese Characters. The machine-readable list used
+by the build script was transcribed and published here:
 
 - https://gist.github.com/Elypha/641901465d639292e18670a5b159c3d8
+
+The production build expands that base list to all single-codepoint character data
+available in `hanzi-writer-data`, sorted by Unicode code point after the base list.
 
 Basic pinyin data is generated at build time with `pinyin-pro`, distributed under the
 MIT License:

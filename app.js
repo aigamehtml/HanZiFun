@@ -107,8 +107,8 @@ const loadedChunks = new Map();
 const chunkCharacters = new Map();
 const coreCharacters = new Set(Object.keys(window.HANZI_STROKES || {}));
 let activeChunkIds = new Set();
-let zipArchivePromise = null;
-let zipArchiveState = "idle";
+const zipArchivePromises = new Map();
+const zipArchiveStates = new Map();
 
 function loadSettings() {
   try {
@@ -515,6 +515,21 @@ function loadScript(source) {
   });
 }
 
+function packForChunk(chunkId) {
+  const packInfo = window.HANZI_PACK_INFO || {};
+  if (!Array.isArray(packInfo.packs)) {
+    return { id: "legacy", file: packInfo.file || "data/strokes-pack-000.zip", chunks: packInfo.chunks || 0 };
+  }
+  const numericChunkId = Number(chunkId);
+  let firstChunk = 0;
+  for (const pack of packInfo.packs) {
+    const chunks = Number(pack.chunks) || 0;
+    if (numericChunkId >= firstChunk && numericChunkId < firstChunk + chunks) return { ...pack, firstChunk };
+    firstChunk += chunks;
+  }
+  return null;
+}
+
 function charactersInChunk(chunkId) {
   if (!chunkCharacters.has(chunkId)) {
     chunkCharacters.set(
@@ -551,30 +566,32 @@ function registerChunk(chunkId, data) {
   evictUnusedChunks();
 }
 
-async function openZipArchive() {
-  if (zipArchivePromise) return zipArchivePromise;
-  zipArchiveState = "loading";
+async function openZipArchive(pack) {
+  if (!pack) throw new Error("Stroke ZIP pack not found");
+  if (zipArchivePromises.has(pack.id)) return zipArchivePromises.get(pack.id);
+  zipArchiveStates.set(pack.id, "loading");
   scheduleRender(false);
-  zipArchivePromise = (async () => {
+  const promise = (async () => {
     await loadScript("vendor/zip.min.js");
     window.zip.configure({ useWebWorkers: false });
-    const response = await fetch(window.HANZI_PACK_INFO?.file || "data/strokes-3500.zip");
+    const response = await fetch(pack.file);
     if (!response.ok) throw new Error(`Stroke ZIP request failed: ${response.status}`);
     const reader = new window.zip.ZipReader(new window.zip.BlobReader(await response.blob()), { useWebWorkers: false });
     const entries = new Map((await reader.getEntries()).map((entry) => [entry.filename, entry]));
-    zipArchiveState = "ready";
+    zipArchiveStates.set(pack.id, "ready");
     scheduleRender(false);
     return { entries, reader };
   })().catch((error) => {
-    zipArchiveState = "error";
+    zipArchiveStates.set(pack.id, "error");
     scheduleRender(false);
     throw error;
   });
-  return zipArchivePromise;
+  zipArchivePromises.set(pack.id, promise);
+  return promise;
 }
 
 async function loadChunkFromZip(chunkId) {
-  const archive = await openZipArchive();
+  const archive = await openZipArchive(packForChunk(chunkId));
   const entry = archive.entries.get(`chunk-${chunkId}.json`);
   if (!entry) throw new Error(`Stroke ZIP entry not found: ${chunkId}`);
   const text = await entry.getData(new window.zip.TextWriter(), { useWebWorkers: false });
@@ -609,6 +626,15 @@ function ensureCharacterData(characters) {
     });
     pendingChunks.set(chunkId, promise);
   }
+}
+
+function activeZipPacks() {
+  const packs = new Map();
+  for (const chunkId of activeChunkIds) {
+    const pack = packForChunk(chunkId);
+    if (pack) packs.set(pack.id, pack);
+  }
+  return [...packs.values()];
 }
 
 function updatePreviewScale(dimensions) {
@@ -657,12 +683,15 @@ function render() {
   els.contentStatus.textContent = settings.template === "copy"
     ? `${copyItems.length} 个字符${unsupported.length ? ` · ${unsupported.length} 字使用字体` : ""}`
     : unsupported.length ? `${unsupported.length} 个字暂无数据：${unsupported.join(" ")}` : `${characters.length} 个汉字`;
-  const archiveMegabytes = ((window.HANZI_PACK_INFO?.bytes || 0) / 1024 / 1024).toFixed(1);
+  const activePacks = activeZipPacks();
+  const loadingPacks = activePacks.filter((pack) => zipArchiveStates.get(pack.id) === "loading");
+  const readyPackCount = [...zipArchiveStates.values()].filter((state) => state === "ready").length;
+  const loadingMegabytes = (loadingPacks.reduce((total, pack) => total + (pack.bytes || 0), 0) / 1024 / 1024).toFixed(1);
   els.dataStatus.textContent = failedChunks.size
     ? `${failedChunks.size} 个笔顺分片加载失败`
-    : zipArchiveState === "loading" ? `正在加载 ${archiveMegabytes}MB 笔顺字库`
+    : loadingPacks.length ? `正在加载 ${loadingMegabytes}MB 笔顺字库`
       : loading ? `正在解压 ${loading} 个字`
-        : zipArchiveState === "ready" ? `ZIP 字库已就绪 · 内存 ${loadedChunks.size} 分片`
+        : readyPackCount ? `ZIP 字库已就绪 · ${readyPackCount} 包 · 内存 ${loadedChunks.size} 分片`
           : navigator.onLine ? "笔顺数据已就绪" : "离线可用";
   els.compactStatus.textContent = `${settings.paperSize} · ${settings.orientation === "portrait" ? "纵向" : "横向"} · ${GRID_STYLE_LABELS[gridStyle()]} · ${TEMPLATE_LABELS[settings.template]}`;
   document.body.dataset.template = settings.template;
@@ -704,9 +733,28 @@ function applySettingsToControls() {
 }
 
 function updateOutputs() {
-  document.querySelector("#blankPageCountOutput").value = `${settings.blankPageCount} 页`;
   document.querySelector("#traceOpacityOutput").value = `${Math.round(settings.traceOpacity * 100)}%`;
   document.querySelector("#zoomOutput").value = `${settings.zoom}%`;
+  updateSteppers();
+}
+
+function updateSteppers() {
+  for (const stepper of document.querySelectorAll("[data-stepper]")) {
+    const input = stepper.querySelector("input[type='number']");
+    const value = Number(input.value);
+    const minimum = input.min === "" ? -Infinity : Number(input.min);
+    const maximum = input.max === "" ? Infinity : Number(input.max);
+    stepper.querySelector("[data-stepper-action='decrement']").disabled = Number.isFinite(value) && value <= minimum;
+    stepper.querySelector("[data-stepper-action='increment']").disabled = Number.isFinite(value) && value >= maximum;
+  }
+}
+
+function adjustStepper(button) {
+  const input = button.closest("[data-stepper]")?.querySelector("input[type='number']");
+  if (!input) return;
+  if (button.dataset.stepperAction === "increment") input.stepUp();
+  else input.stepDown();
+  input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 function updateHeaderFieldVisibility() {
@@ -777,6 +825,10 @@ function init() {
     const liveInputTypes = ["text", "textarea", "range", "number", "color"];
     control.addEventListener(liveInputTypes.includes(control.type) ? "input" : "change", () => syncSettingFromControl(control));
   }
+  els.controls.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-stepper-action]");
+    if (button) adjustStepper(button);
+  });
   els.replaceContentBtn.addEventListener("click", () => insertContent(false));
   els.appendContentBtn.addEventListener("click", () => insertContent(true));
   els.settingsBtn.addEventListener("click", () => setDrawer(true));
