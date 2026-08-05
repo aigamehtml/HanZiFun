@@ -57,6 +57,7 @@ Tianzi and Mizi are grid styles, not templates. The selected grid style applies 
 - Support PWA installation with a manifest, service worker, app icons, standalone display, and basic offline caching.
 - Direct PDF export uses locally vendored html2canvas and jsPDF runtimes, loaded on demand and cached for offline use. Keep browser printing as a separate action.
 - While an on-demand stroke ZIP is loading or decompressing, expose an explicit loading state and render pending grid glyphs with the browser's regular-script fallback stack at a size close to the final SVG strokes.
+- After the initial page load, advertise unused stroke ZIP packs with low-priority HTML5 `prefetch` hints during browser idle time. Defer while active stroke loads are running and skip on save-data, 2G, offline, or `file://` contexts.
 - Stroke data comes from `hanzi-writer-data`, derived from Make Me A Hanzi. Preserve attribution and license notes when expanding data.
 
 ## Product Decisions

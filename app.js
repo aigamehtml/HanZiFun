@@ -113,6 +113,7 @@ let activeChunkIds = new Set();
 const zipArchivePromises = new Map();
 const zipArchiveStates = new Map();
 let exportStatusTimer = 0;
+let strokePrefetchScheduled = false;
 
 function loadSettings() {
   try {
@@ -651,6 +652,39 @@ function activeZipPacks() {
   return [...packs.values()];
 }
 
+function prefetchUnusedStrokePacks() {
+  strokePrefetchScheduled = false;
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  if (!USE_ZIP_PACK || !navigator.onLine || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || "")) return;
+  if (pendingChunks.size || [...zipArchiveStates.values()].includes("loading")) {
+    scheduleStrokePackPrefetch(2000);
+    return;
+  }
+
+  for (const pack of window.HANZI_PACK_INFO?.packs || []) {
+    if (!pack?.file || zipArchivePromises.has(pack.id)) continue;
+    if (document.head.querySelector(`link[rel="prefetch"][href="${pack.file}"]`)) continue;
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = "fetch";
+    link.type = "application/zip";
+    link.href = pack.file;
+    link.fetchPriority = "low";
+    document.head.append(link);
+  }
+}
+
+function scheduleStrokePackPrefetch(delay = 0) {
+  if (strokePrefetchScheduled) return;
+  strokePrefetchScheduled = true;
+  const schedule = () => {
+    if ("requestIdleCallback" in window) window.requestIdleCallback(prefetchUnusedStrokePacks, { timeout: 4000 });
+    else setTimeout(prefetchUnusedStrokePacks, 1200);
+  };
+  if (delay) setTimeout(schedule, delay);
+  else schedule();
+}
+
 function updatePreviewScale(dimensions) {
   const availableWidth = Math.max(240, els.previewWrap.clientWidth - 40);
   const requestedScale = settings.zoom / 100;
@@ -986,8 +1020,12 @@ function init() {
     scheduleRender();
   }, { passive: false });
   window.addEventListener("resize", () => updatePreviewScale(paperDimensions()));
-  window.addEventListener("online", () => scheduleRender(false));
+  window.addEventListener("online", () => {
+    scheduleRender(false);
+    scheduleStrokePackPrefetch();
+  });
   window.addEventListener("offline", () => scheduleRender(false));
+  window.addEventListener("load", () => scheduleStrokePackPrefetch());
   registerPwa();
   render();
 }
