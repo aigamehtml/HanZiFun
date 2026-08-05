@@ -145,10 +145,19 @@ function extractCopyItems(text) {
   return Array.from(text).filter((character) => !/\s/u.test(character));
 }
 
-function chunk(items, size) {
-  const result = [];
-  for (let index = 0; index < items.length; index += size) result.push(items.slice(index, index + size));
-  return result;
+function layoutCopyItems(text, columns) {
+  const slots = [];
+  let cursor = 0;
+  const lines = String(text).replace(/\r\n?/g, "\n").split("\n");
+  lines.forEach((line, lineIndex) => {
+    const characters = Array.from(line).filter((character) => !/\s/u.test(character));
+    for (const character of characters) slots[cursor++] = character;
+    if (lineIndex === lines.length - 1) return;
+    const remainder = cursor % columns;
+    if (!characters.length && remainder === 0) cursor += columns;
+    else if (remainder) cursor += columns - remainder;
+  });
+  return { slots, usedSlots: cursor };
 }
 
 function clamp(value, min, max) {
@@ -438,7 +447,7 @@ function renderBlankPages(dimensions) {
   return { markup: pages.join(""), pageCount: pages.length, columns, rows };
 }
 
-function renderCopyPages(items, dimensions) {
+function renderCopyPages(text, dimensions) {
   const usableWidth = dimensions.width - settings.marginMm * 2;
   const usableHeight = dimensions.height - settings.marginMm * 2 - headerReservedHeight();
   const automaticColumns = Math.max(1, Math.floor((usableWidth + settings.cellGapMm) / (settings.cellSizeMm + settings.cellGapMm)));
@@ -446,19 +455,20 @@ function renderCopyPages(items, dimensions) {
   const columns = settings.cellsPerRow > 0 ? Math.min(settings.cellsPerRow, automaticColumns) : automaticColumns;
   const rows = settings.rowsPerPage > 0 ? Math.min(settings.rowsPerPage, automaticRows) : automaticRows;
   const pageCapacity = columns * rows;
-  const pageItems = chunk(items, pageCapacity);
-  if (!pageItems.length) pageItems.push([]);
-  const markup = pageItems.map((itemsOnPage, pageIndex) => {
+  const { slots, usedSlots } = layoutCopyItems(text, columns);
+  const pageCount = Math.max(1, Math.ceil(Math.max(1, usedSlots) / pageCapacity));
+  const markup = Array.from({ length: pageCount }, (_, pageIndex) => {
     const cells = Array.from({ length: pageCapacity }, (_, index) => {
+      const character = slots[pageIndex * pageCapacity + index];
       const options = { joinLeft: settings.cellGapMm === 0 && index % columns !== 0 };
-      return index < itemsOnPage.length
-        ? makeCopyCell(itemsOnPage[index], options)
+      return character !== undefined
+        ? makeCopyCell(character, options)
         : makeCharacterSvg("", { ...options, blank: true, gridStyle: "tian" });
     }).join("");
     const body = `<div class="blank-grid copy-grid" style="--blank-columns:${columns};--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm;--row-gap-mm:${settings.rowGapMm}mm">${cells}</div>`;
-    return makePage(body, pageIndex, pageItems.length, dimensions, "copy-page");
+    return makePage(body, pageIndex, pageCount, dimensions, "copy-page");
   }).join("");
-  return { markup, pageCount: pageItems.length, columns, rows };
+  return { markup, pageCount, columns, rows };
 }
 
 function unsupportedCharacters(characters) {
@@ -604,7 +614,7 @@ function render() {
   if (settings.template !== "blank") ensureCharacterData(printable);
 
   if (settings.template === "blank") result = renderBlankPages(dimensions);
-  else if (settings.template === "copy") result = renderCopyPages(copyItems, dimensions);
+  else if (settings.template === "copy") result = renderCopyPages(settings.inputText, dimensions);
   else if (settings.template === "stroke") result = renderStrokePages(printable, dimensions);
   else result = renderStandardPages(printable, dimensions);
 
