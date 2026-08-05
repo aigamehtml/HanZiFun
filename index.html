@@ -100,6 +100,20 @@
               <input id="cellSizeMm" data-setting="cellSizeMm" type="number" min="12" max="32" step="1">
             </label>
           </div>
+          <div class="field-grid">
+            <label class="field">
+              <span>水平间距（mm）</span>
+              <input id="cellGapMm" data-setting="cellGapMm" type="number" min="0" max="12" step="0.5">
+            </label>
+            <label class="field">
+              <span>行间距（mm）</span>
+              <input id="rowGapMm" data-setting="rowGapMm" type="number" min="0" max="16" step="0.5">
+            </label>
+          </div>
+          <label class="field color-field">
+            <span>格线颜色</span>
+            <input id="gridColor" data-setting="gridColor" type="color">
+          </label>
           <div class="field-grid blank-layout-settings">
             <label class="field">
               <span>每行格数（0 自动）</span>
@@ -118,9 +132,22 @@
 
         <section class="control-section practice-settings">
           <h2>练习</h2>
+          <div class="field-grid standard-only">
+            <label class="field">
+              <span>每字占用行数</span>
+              <input id="rowsPerCharacter" data-setting="rowsPerCharacter" type="number" min="1" max="6" step="1">
+            </label>
+            <label class="field">
+              <span>描红模式</span>
+              <select id="traceMode" data-setting="traceMode">
+                <option value="full">完整字后留白</option>
+                <option value="progressive">按笔顺累加</option>
+              </select>
+            </label>
+          </div>
           <label class="field standard-only">
-            <span class="range-label">每字空白格 <output id="practiceCountOutput"></output></span>
-            <input id="practiceCount" data-setting="practiceCount" type="range" min="2" max="10" step="1">
+            <span class="range-label">每行练习格 <output id="practiceCountOutput"></output></span>
+            <input id="practiceCount" data-setting="practiceCount" type="range" min="3" max="11" step="1">
           </label>
           <label class="field stroke-only">
             <span class="range-label">分步图数量 <output id="stepCountOutput"></output></span>
@@ -131,6 +158,7 @@
             <input id="traceOpacity" data-setting="traceOpacity" type="range" min="0.08" max="0.45" step="0.01">
           </label>
           <div class="check-grid stroke-options">
+            <label class="check standard-only"><input id="showRowGuide" data-setting="showRowGuide" type="checkbox"> <span>格外引导字</span></label>
             <label class="check"><input id="showStrokeNumbers" data-setting="showStrokeNumbers" type="checkbox"> <span>笔顺编号</span></label>
             <label class="check"><input id="showStartDots" data-setting="showStartDots" type="checkbox"> <span>起笔点</span></label>
             <label class="check"><input id="showArrows" data-setting="showArrows" type="checkbox"> <span>方向箭头</span></label>

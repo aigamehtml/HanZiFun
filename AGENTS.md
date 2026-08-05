@@ -60,6 +60,11 @@ Templates currently implemented:
 - Blank practice paper does not require input text or stroke data. It should generate printable Tianzi or Mizi grid pages directly from layout settings.
 - Stroke order is for print, not animation-first. Prioritize static clarity: numbers, start dots, direction arrows, and step breakdowns.
 - Header information should be template-driven and optional: blank, simple title, homework, class, and teacher-style variants.
+- Standard tracing supports 1-6 rows per character, independently adjustable horizontal cell gaps and row gaps, and an optional guide character outside the grid strip.
+- Horizontal cell gaps must support a true `0mm`; SVG grid frames therefore extend to the cell boundary so adjacent frames visually meet.
+- Standard tracing supports both full-character-then-blank practice and cumulative stroke tracing. In cumulative mode, cell N contains strokes 1 through N, and cells after the final stroke repeat the full character.
+- Grid line color is user-configurable and applies to both outer frames and guide lines while preserving guide-line contrast.
+- Homework, class, and teacher headers need handwriting-sized field lines. Expanded header height must be included in pagination calculations.
 - Content should come from both manual input and built-in templates. Initial template categories: Tang poems, San Zi Jing sections, elementary common character groups, basic character structures, and common words.
 - Built-in content template insertion should support replacing current input by default and appending as an option.
 

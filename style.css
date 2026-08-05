@@ -229,6 +229,15 @@ textarea:focus-visible {
   accent-color: var(--accent);
 }
 
+.color-field input[type="color"] {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 4px;
+  background: #ffffff;
+}
+
 .range-label {
   display: flex;
   justify-content: space-between;
@@ -427,6 +436,14 @@ body[data-template="stroke"] .stroke-only {
   border-bottom: 0.3mm solid #cfd7dc;
 }
 
+.page-header.expanded-header {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 24mm;
+  align-content: start;
+  gap: 2mm;
+  padding: 1mm 0 3mm;
+}
+
 .page-header h2 {
   overflow: hidden;
   margin: 0;
@@ -438,10 +455,32 @@ body[data-template="stroke"] .stroke-only {
 
 .page-meta {
   display: flex;
-  gap: 5mm;
+  align-items: end;
+  gap: 4mm;
   color: #58656d;
   font-size: 11px;
+}
+
+.meta-field {
+  display: grid;
+  flex: 1 1 0;
+  min-width: 24mm;
+  gap: 0.5mm;
   white-space: nowrap;
+}
+
+.meta-write {
+  display: block;
+  min-height: 5mm;
+  overflow: hidden;
+  border-bottom: 0.3mm solid #8d989f;
+  padding: 0 1mm 0.8mm;
+  color: #303b42;
+  text-overflow: ellipsis;
+}
+
+.page-meta-field {
+  max-width: 28mm;
 }
 
 .page-number {
@@ -455,15 +494,20 @@ body[data-template="stroke"] .stroke-only {
 .practice-list,
 .stroke-list {
   display: grid;
-  gap: 4.5mm;
+  gap: var(--row-gap-mm, 4.5mm);
 }
 
 .char-row {
   display: grid;
-  grid-template-columns: 15mm var(--cell-mm) var(--cell-mm) minmax(0, 1fr);
+  grid-template-columns: 15mm minmax(0, 1fr);
   align-items: center;
   gap: 2.5mm;
   min-width: 0;
+}
+
+.char-row.no-row-guide {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
 }
 
 .char-info {
@@ -483,24 +527,19 @@ body[data-template="stroke"] .stroke-only {
   font-size: 10px;
 }
 
-.model-cell,
-.trace-cell,
-.cell-strip {
-  min-width: 0;
-}
-
 .hanzi-cell {
   display: block;
   width: var(--cell-mm, 21mm);
   height: var(--cell-mm, 21mm);
 }
 
-.cell-strip {
+.exercise-strip {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: var(--cell-mm);
   justify-content: start;
-  gap: 2mm;
+  gap: var(--cell-gap-mm, 2mm);
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -563,6 +602,8 @@ body[data-template="stroke"] .stroke-only {
 .blank-grid {
   display: grid;
   grid-template-columns: repeat(var(--blank-columns), var(--cell-mm));
+  column-gap: var(--cell-gap-mm, 0mm);
+  row-gap: var(--row-gap-mm, 0mm);
   justify-content: center;
   align-content: start;
 }
@@ -583,13 +624,14 @@ body[data-template="stroke"] .stroke-only {
 
 svg .grid-line {
   fill: none;
-  stroke: #aebac2;
+  stroke: var(--grid-color, #aebac2);
   stroke-width: 9;
 }
 
 svg .guide-line {
   fill: none;
-  stroke: #ced6dc;
+  stroke: var(--grid-color, #aebac2);
+  opacity: 0.55;
   stroke-width: 6;
   stroke-dasharray: 25 22;
 }
@@ -782,6 +824,7 @@ svg .fallback-glyph {
   .field input[type="text"],
   .field input[type="date"],
   .field input[type="number"],
+  .field input[type="color"],
   .field select,
   .field textarea,
   .inline-action select,

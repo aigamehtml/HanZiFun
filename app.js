@@ -1,5 +1,5 @@
 const SETTINGS_KEY = "hanzifun.settings";
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 const CSS_PX_PER_MM = 96 / 25.4;
 const VIEWBOX_SIZE = 1024;
 const BASELINE = 900;
@@ -28,22 +28,29 @@ const DEFAULT_SETTINGS = {
   marginMm: 10,
   rowsPerPage: 0,
   cellsPerRow: 0,
-  practiceCount: 5,
+  practiceCount: 6,
+  rowsPerCharacter: 1,
+  cellGapMm: 2,
+  rowGapMm: 4.5,
   stepCount: 8,
   blankPageCount: 1,
   dedupe: true,
   showPinyin: true,
+  showRowGuide: true,
   showStrokeNumbers: true,
   showStartDots: true,
   showArrows: true,
   showGuides: true,
+  traceMode: "full",
   traceOpacity: 0.2,
+  gridColor: "#aebac2",
   zoom: 70,
 };
 
 const NUMBER_FIELDS = new Set([
   "cellSizeMm", "marginMm", "rowsPerPage", "cellsPerRow", "practiceCount",
-  "stepCount", "blankPageCount", "traceOpacity", "zoom",
+  "rowsPerCharacter", "cellGapMm", "rowGapMm", "stepCount", "blankPageCount",
+  "traceOpacity", "zoom",
 ]);
 
 const TEMPLATE_LABELS = {
@@ -93,7 +100,13 @@ let zipArchiveState = "idle";
 function loadSettings() {
   try {
     const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY));
-    if (stored?.settingsVersion === SETTINGS_VERSION) return { ...DEFAULT_SETTINGS, ...stored };
+    if (stored && typeof stored === "object" && Number(stored.settingsVersion) <= SETTINGS_VERSION) {
+      const migrated = { ...stored };
+      if (Number(stored.settingsVersion) < 3 && Number.isFinite(Number(stored.practiceCount))) {
+        migrated.practiceCount = clamp(Number(stored.practiceCount) + 1, 3, 11);
+      }
+      return { ...DEFAULT_SETTINGS, ...migrated, settingsVersion: SETTINGS_VERSION };
+    }
   } catch {
     // Private browsing and file URLs can deny storage access.
   }
@@ -134,6 +147,15 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
+function gridColor() {
+  return /^#[0-9a-f]{6}$/i.test(settings.gridColor) ? settings.gridColor : DEFAULT_SETTINGS.gridColor;
+}
+
+function headerReservedHeight() {
+  if (settings.headerPreset === "blank") return 0;
+  return settings.headerPreset === "simple" ? 18 : 28;
+}
+
 function paperDimensions() {
   const base = PAPER_SIZES[settings.paperSize] || PAPER_SIZES.A4;
   return settings.orientation === "landscape" ? { width: base[1], height: base[0] } : { width: base[0], height: base[1] };
@@ -148,11 +170,14 @@ function pointToSvg(point) {
 }
 
 function makeGrid(type) {
-  if (!settings.showGuides) return '<rect class="grid-line" x="80" y="80" width="864" height="864"></rect>';
+  const edge = 5;
+  const farEdge = VIEWBOX_SIZE - edge;
+  const size = VIEWBOX_SIZE - edge * 2;
+  if (!settings.showGuides) return `<rect class="grid-line" x="${edge}" y="${edge}" width="${size}" height="${size}"></rect>`;
   const diagonals = type === "mi"
-    ? '<line class="guide-line" x1="80" y1="80" x2="944" y2="944"></line><line class="guide-line" x1="944" y1="80" x2="80" y2="944"></line>'
+    ? `<line class="guide-line" x1="${edge}" y1="${edge}" x2="${farEdge}" y2="${farEdge}"></line><line class="guide-line" x1="${farEdge}" y1="${edge}" x2="${edge}" y2="${farEdge}"></line>`
     : "";
-  return `<rect class="grid-line" x="80" y="80" width="864" height="864"></rect><line class="guide-line" x1="512" y1="80" x2="512" y2="944"></line><line class="guide-line" x1="80" y1="512" x2="944" y2="512"></line>${diagonals}`;
+  return `<rect class="grid-line" x="${edge}" y="${edge}" width="${size}" height="${size}"></rect><line class="guide-line" x1="512" y1="${edge}" x2="512" y2="${farEdge}"></line><line class="guide-line" x1="${edge}" y1="512" x2="${farEdge}" y2="512"></line>${diagonals}`;
 }
 
 function renderStrokePaths(data, options) {
@@ -191,6 +216,9 @@ function renderAnnotations(data) {
 function makeCharacterSvg(character, options = {}) {
   const data = window.HANZI_STROKES?.[character];
   const grid = makeGrid(options.gridStyle || gridStyle());
+  if (options.blank) {
+    return `<svg class="hanzi-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="空白练习格">${grid}</svg>`;
+  }
   if (!data) {
     return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="fallback-glyph" x="512" y="640">${escapeHtml(character)}</text></svg>`;
   }
@@ -203,14 +231,26 @@ function pinyinFor(character) {
   return settings.showPinyin ? (window.HANZI_PINYIN?.[character] || "") : "";
 }
 
+function makePracticeCells(character, practiceCount) {
+  if (settings.traceMode === "progressive") {
+    const strokeCount = window.HANZI_STROKES?.[character]?.strokes.length || 1;
+    return Array.from({ length: practiceCount }, (_, index) =>
+      makeCharacterSvg(character, { trace: true, mode: "step", step: Math.min(index, strokeCount - 1) })
+    ).join("");
+  }
+  return Array.from({ length: practiceCount }, (_, index) =>
+    makeCharacterSvg(character, index === 0 ? { trace: true, annotate: true } : { blank: true })
+  ).join("");
+}
+
 function makeStandardRow(character, practiceCount) {
-  const cellStyle = `style="--cell-mm:${settings.cellSizeMm}mm"`;
-  const blanks = Array.from({ length: practiceCount }, () => makeCharacterSvg(character, { blank: true })).join("");
-  return `<article class="char-row" ${cellStyle}>
-    <div class="char-info"><span class="pinyin">${escapeHtml(pinyinFor(character))}</span><strong>${escapeHtml(character)}</strong></div>
-    <div class="model-cell">${makeCharacterSvg(character)}</div>
-    <div class="trace-cell">${makeCharacterSvg(character, { trace: true, annotate: true })}</div>
-    <div class="cell-strip">${blanks}</div>
+  const rowClass = settings.showRowGuide ? "char-row" : "char-row no-row-guide";
+  const rowStyle = `style="--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm"`;
+  const guide = settings.showRowGuide
+    ? `<div class="char-info"><span class="pinyin">${escapeHtml(pinyinFor(character))}</span><strong>${escapeHtml(character)}</strong></div>`
+    : "";
+  return `<article class="${rowClass}" ${rowStyle}>
+    ${guide}<div class="exercise-strip">${makeCharacterSvg(character)}${makePracticeCells(character, practiceCount)}</div>
   </article>`;
 }
 
@@ -237,16 +277,18 @@ function headerFields(pageIndex, pageCount) {
   if (preset === "blank") return "";
   const title = `<h2>${escapeHtml(settings.title || TEMPLATE_LABELS[settings.template])}</h2>`;
   const fields = [];
-  if (["class", "teacher"].includes(preset)) fields.push(`班级：${escapeHtml(settings.className)}`);
-  if (["homework", "class", "teacher"].includes(preset)) fields.push(`姓名：${escapeHtml(settings.studentName)}`);
-  if (["homework", "class"].includes(preset)) fields.push(`日期：${escapeHtml(settings.date)}`);
-  if (preset === "teacher") fields.push(`第 ${pageIndex + 1} / ${pageCount} 页`);
-  return `<header class="page-header">${title}<div class="page-meta">${fields.map((field) => `<span>${field}</span>`).join("")}</div></header>`;
+  const writableField = (label, value) => `<span class="meta-field"><span>${label}</span><span class="meta-write">${escapeHtml(value)}</span></span>`;
+  if (["class", "teacher"].includes(preset)) fields.push(writableField("班级", settings.className));
+  if (["homework", "class", "teacher"].includes(preset)) fields.push(writableField("姓名", settings.studentName));
+  if (["homework", "class"].includes(preset)) fields.push(writableField("日期", settings.date));
+  if (preset === "teacher") fields.push(`<span class="meta-field page-meta-field"><span>页码</span><span class="meta-write">${pageIndex + 1} / ${pageCount}</span></span>`);
+  const expandedClass = preset === "simple" ? "" : " expanded-header";
+  return `<header class="page-header${expandedClass}">${title}${fields.length ? `<div class="page-meta">${fields.join("")}</div>` : ""}</header>`;
 }
 
 function makePage(body, pageIndex, pageCount, dimensions, extraClass = "") {
   return `<div class="page-shell" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm">
-    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm">
+    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-color:${gridColor()}">
       ${headerFields(pageIndex, pageCount)}${body}
       ${settings.headerPreset !== "teacher" ? `<span class="page-number">${pageIndex + 1} / ${pageCount}</span>` : ""}
     </section>
@@ -255,33 +297,52 @@ function makePage(body, pageIndex, pageCount, dimensions, extraClass = "") {
 
 function renderStandardPages(characters, dimensions) {
   const usableWidth = dimensions.width - settings.marginMm * 2;
-  const usableHeight = dimensions.height - settings.marginMm * 2 - (settings.headerPreset === "blank" ? 0 : 18);
-  const requestedPractice = settings.practiceCount;
-  const maximumPractice = Math.floor((usableWidth - 17 - settings.cellSizeMm * 2 - 10) / (settings.cellSizeMm + 2));
-  const practiceCount = clamp(Math.min(requestedPractice, maximumPractice), 1, requestedPractice);
-  const automaticRows = Math.max(1, Math.floor(usableHeight / (settings.cellSizeMm + 6)));
+  const usableHeight = dimensions.height - settings.marginMm * 2 - headerReservedHeight();
+  const guideWidth = settings.showRowGuide ? 17.5 : 0;
+  const exerciseWidth = Math.max(settings.cellSizeMm * 2, usableWidth - guideWidth);
+  const maximumCells = Math.max(2, Math.floor((exerciseWidth + settings.cellGapMm) / (settings.cellSizeMm + settings.cellGapMm)));
+  const practiceCount = clamp(Math.min(settings.practiceCount, maximumCells - 1), 1, settings.practiceCount);
+  const automaticRows = Math.max(1, Math.floor((usableHeight + settings.rowGapMm) / (settings.cellSizeMm + settings.rowGapMm)));
   const rows = settings.rowsPerPage > 0 ? Math.min(settings.rowsPerPage, automaticRows) : automaticRows;
-  const pages = chunk(characters, rows);
+  const rowsPerCharacter = clamp(Math.round(settings.rowsPerCharacter), 1, 6);
+  const pages = [];
+  let currentPage = [];
+  for (const character of characters) {
+    const characterRows = Array.from({ length: rowsPerCharacter }, () => character);
+    if (currentPage.length && characterRows.length <= rows && currentPage.length + characterRows.length > rows) {
+      pages.push(currentPage);
+      currentPage = [];
+    }
+    while (characterRows.length) {
+      const available = rows - currentPage.length;
+      currentPage.push(...characterRows.splice(0, available));
+      if (currentPage.length === rows) {
+        pages.push(currentPage);
+        currentPage = [];
+      }
+    }
+  }
+  if (currentPage.length) pages.push(currentPage);
   if (!pages.length) pages.push([]);
-  const markup = pages.map((pageCharacters, pageIndex) => {
-    const body = pageCharacters.length
-      ? `<div class="practice-list">${pageCharacters.map((character) => makeStandardRow(character, practiceCount)).join("")}</div>`
+  const markup = pages.map((pageRows, pageIndex) => {
+    const body = pageRows.length
+      ? `<div class="practice-list" style="--row-gap-mm:${settings.rowGapMm}mm">${pageRows.map((character) => makeStandardRow(character, practiceCount)).join("")}</div>`
       : '<div class="empty-page-message">请在左侧输入要练习的汉字</div>';
     return makePage(body, pageIndex, pages.length, dimensions);
   }).join("");
-  return { markup, pageCount: pages.length, practiceCount };
+  return { markup, pageCount: pages.length, practiceCount, rowsPerCharacter };
 }
 
 function renderStrokePages(characters, dimensions) {
-  const usableHeight = dimensions.height - settings.marginMm * 2 - (settings.headerPreset === "blank" ? 0 : 18);
+  const usableHeight = dimensions.height - settings.marginMm * 2 - headerReservedHeight();
   const cardHeight = dimensions.width > dimensions.height ? 48 : 55;
-  const automaticRows = Math.max(1, Math.floor(usableHeight / cardHeight));
+  const automaticRows = Math.max(1, Math.floor((usableHeight + settings.rowGapMm) / (cardHeight + settings.rowGapMm)));
   const rows = settings.rowsPerPage > 0 ? Math.min(settings.rowsPerPage, automaticRows) : automaticRows;
   const pages = chunk(characters, rows);
   if (!pages.length) pages.push([]);
   const markup = pages.map((pageCharacters, pageIndex) => {
     const body = pageCharacters.length
-      ? `<div class="stroke-list">${pageCharacters.map(makeStrokeCard).join("")}</div>`
+      ? `<div class="stroke-list" style="--row-gap-mm:${settings.rowGapMm}mm">${pageCharacters.map(makeStrokeCard).join("")}</div>`
       : '<div class="empty-page-message">请在左侧输入要学习笔顺的汉字</div>';
     return makePage(body, pageIndex, pages.length, dimensions, "stroke-page");
   }).join("");
@@ -290,13 +351,13 @@ function renderStrokePages(characters, dimensions) {
 
 function renderBlankPages(dimensions) {
   const usableWidth = dimensions.width - settings.marginMm * 2;
-  const usableHeight = dimensions.height - settings.marginMm * 2 - (settings.headerPreset === "blank" ? 0 : 18);
-  const automaticColumns = Math.max(1, Math.floor(usableWidth / settings.cellSizeMm));
-  const automaticRows = Math.max(1, Math.floor(usableHeight / settings.cellSizeMm));
+  const usableHeight = dimensions.height - settings.marginMm * 2 - headerReservedHeight();
+  const automaticColumns = Math.max(1, Math.floor((usableWidth + settings.cellGapMm) / (settings.cellSizeMm + settings.cellGapMm)));
+  const automaticRows = Math.max(1, Math.floor((usableHeight + settings.rowGapMm) / (settings.cellSizeMm + settings.rowGapMm)));
   const columns = settings.cellsPerRow > 0 ? Math.min(settings.cellsPerRow, automaticColumns) : automaticColumns;
   const rows = settings.rowsPerPage > 0 ? Math.min(settings.rowsPerPage, automaticRows) : automaticRows;
   const cells = Array.from({ length: columns * rows }, () => makeCharacterSvg("", { blank: true, gridStyle: gridStyle() })).join("");
-  const body = `<div class="blank-grid" style="--blank-columns:${columns};--cell-mm:${settings.cellSizeMm}mm">${cells}</div>`;
+  const body = `<div class="blank-grid" style="--blank-columns:${columns};--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm;--row-gap-mm:${settings.rowGapMm}mm">${cells}</div>`;
   const pages = Array.from({ length: settings.blankPageCount }, (_, index) => makePage(body, index, settings.blankPageCount, dimensions, "blank-page"));
   return { markup: pages.join(""), pageCount: pages.length, columns, rows };
 }
@@ -454,7 +515,8 @@ function render() {
   let summary = settings.template === "blank"
     ? `${result.pageCount} 页 · ${result.columns} × ${result.rows} 格`
     : `${printable.length} 个字 · ${result.pageCount} 页`;
-  if (result.practiceCount && result.practiceCount < settings.practiceCount) summary += ` · 每字 ${result.practiceCount} 个空白格`;
+  if (result.rowsPerCharacter > 1) summary += ` · 每字 ${result.rowsPerCharacter} 行`;
+  if (result.practiceCount && result.practiceCount < settings.practiceCount) summary += ` · 每行 ${result.practiceCount} 个练习格`;
   els.summary.textContent = summary;
   els.contentStatus.textContent = unsupported.length ? `${unsupported.length} 个字暂无数据：${unsupported.join(" ")}` : `${characters.length} 个汉字`;
   const archiveMegabytes = ((window.HANZI_PACK_INFO?.bytes || 0) / 1024 / 1024).toFixed(1);
@@ -478,7 +540,13 @@ function scheduleRender(shouldSave = true) {
 
 function readControl(control) {
   if (control.type === "checkbox") return control.checked;
-  if (NUMBER_FIELDS.has(control.dataset.setting)) return Number(control.value);
+  if (NUMBER_FIELDS.has(control.dataset.setting)) {
+    const value = Number(control.value);
+    if (!Number.isFinite(value)) return DEFAULT_SETTINGS[control.dataset.setting];
+    const minimum = control.min === "" ? -Infinity : Number(control.min);
+    const maximum = control.max === "" ? Infinity : Number(control.max);
+    return clamp(value, minimum, maximum);
+  }
   return control.value;
 }
 
@@ -570,7 +638,8 @@ function init() {
   applySettingsToControls();
   populateContentTemplates();
   for (const control of document.querySelectorAll("[data-setting]")) {
-    control.addEventListener(control.type === "text" || control.type === "textarea" || control.type === "range" || control.type === "number" ? "input" : "change", () => syncSettingFromControl(control));
+    const liveInputTypes = ["text", "textarea", "range", "number", "color"];
+    control.addEventListener(liveInputTypes.includes(control.type) ? "input" : "change", () => syncSettingFromControl(control));
   }
   els.replaceContentBtn.addEventListener("click", () => insertContent(false));
   els.appendContentBtn.addEventListener("click", () => insertContent(true));
