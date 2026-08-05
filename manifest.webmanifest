@@ -1,6 +1,6 @@
 {
-  "name": "HanZiFun 离线中文写字练习本",
-  "short_name": "HanZiFun",
+  "name": "汉字 Fun",
+  "short_name": "汉字 Fun",
   "description": "为孩子制作可打印的中文写字练习纸",
   "lang": "zh-CN",
   "start_url": "./",

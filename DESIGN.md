@@ -1,8 +1,8 @@
-# HanZiFun Design Philosophy
+# 汉字 Fun Design Philosophy
 
 ## Product Shape
 
-HanZiFun is not a landing page and not a form-based PDF generator. It is a lightweight print design tool for Chinese handwriting practice sheets.
+汉字 Fun is not a landing page and not a form-based PDF generator. It is a lightweight print design tool for Chinese handwriting practice sheets.
 
 The default screen should immediately communicate the product:
 
@@ -168,7 +168,7 @@ Recommended mobile structure:
 
 ```text
 ┌────────────────────┐
-│ HanZiFun      Print│
+│ 汉字 Fun      Print│
 ├────────────────────┤
 │                    │
 │   scaled paper     │
@@ -443,8 +443,8 @@ Do not turn the app into:
 - a multi-step PDF wizard
 - an account-first SaaS product
 
-HanZiFun should stay close to one job: design a printable Chinese writing sheet quickly and clearly.
+汉字 Fun should stay close to one job: design a printable Chinese writing sheet quickly and clearly.
 
 ## One-Sentence Design North Star
 
-HanZiFun is a calm, WYSIWYG print design tool: settings on the left, real paper on the right, every change visible immediately.
+汉字 Fun is a calm, WYSIWYG print design tool: settings on the left, real paper on the right, every change visible immediately.
