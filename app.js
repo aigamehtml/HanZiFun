@@ -1,5 +1,5 @@
 const SETTINGS_KEY = "hanzifun.settings";
-const SETTINGS_VERSION = 6;
+const SETTINGS_VERSION = 7;
 const CSS_PX_PER_MM = 96 / 25.4;
 const VIEWBOX_SIZE = 1024;
 const BASELINE = 900;
@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS = {
   paperSize: "A4",
   orientation: "portrait",
   headerPreset: "homework",
+  footerPreset: "right",
   title: "中文写字练习",
   studentName: "",
   className: "",
@@ -353,7 +354,7 @@ function strokeCardLayout(character, usableWidth) {
   };
 }
 
-function headerFields(pageIndex, pageCount) {
+function headerFields() {
   const preset = settings.headerPreset;
   if (preset === "blank") return "";
   const title = `<h2>${escapeHtml(settings.title || TEMPLATE_LABELS[settings.template])}</h2>`;
@@ -362,16 +363,20 @@ function headerFields(pageIndex, pageCount) {
   if (["class", "teacher"].includes(preset)) fields.push(writableField("班级", settings.className));
   if (["homework", "class", "teacher"].includes(preset)) fields.push(writableField("姓名", settings.studentName));
   if (["homework", "class"].includes(preset)) fields.push(writableField("日期", settings.date));
-  if (preset === "teacher") fields.push(`<span class="meta-field page-meta-field"><span>页码</span><span class="meta-write">${pageIndex + 1} / ${pageCount}</span></span>`);
   const expandedClass = preset === "simple" ? "" : " expanded-header";
   return `<header class="page-header${expandedClass}">${title}${fields.length ? `<div class="page-meta">${fields.join("")}</div>` : ""}</header>`;
+}
+
+function footerFields(pageIndex, pageCount) {
+  if (settings.footerPreset === "none") return "";
+  const alignment = settings.footerPreset === "center" ? "center" : "right";
+  return `<footer class="page-footer footer-${alignment}">${pageIndex + 1} / ${pageCount}</footer>`;
 }
 
 function makePage(body, pageIndex, pageCount, dimensions, extraClass = "") {
   return `<div class="page-shell" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm">
     <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-frame-color:${settingColor("gridFrameColor")};--grid-cross-color:${settingColor("gridCrossColor")};--grid-diagonal-color:${settingColor("gridDiagonalColor")}">
-      ${headerFields(pageIndex, pageCount)}${body}
-      ${settings.headerPreset !== "teacher" ? `<span class="page-number">${pageIndex + 1} / ${pageCount}</span>` : ""}
+      ${headerFields()}${body}${footerFields(pageIndex, pageCount)}
     </section>
   </div>`;
 }

@@ -178,17 +178,27 @@
         </section>
 
         <section class="control-section space-y-4">
-          <h2>页眉</h2>
-          <label class="field flex flex-col gap-1.5">
-            <span>样式</span>
-            <select id="headerPreset" data-setting="headerPreset">
-              <option value="blank">空白版</option>
-              <option value="simple">简洁版</option>
-              <option value="homework">作业版</option>
-              <option value="class">班级版</option>
-              <option value="teacher">教师版</option>
-            </select>
-          </label>
+          <h2>页眉与页脚</h2>
+          <div class="field-grid grid grid-cols-2 items-end gap-x-3">
+            <label class="field flex flex-col gap-1.5">
+              <span>页眉样式</span>
+              <select id="headerPreset" data-setting="headerPreset">
+                <option value="blank">空白版</option>
+                <option value="simple">简洁版</option>
+                <option value="homework">作业版</option>
+                <option value="class">班级版</option>
+                <option value="teacher">教师版</option>
+              </select>
+            </label>
+            <label class="field flex flex-col gap-1.5">
+              <span>页脚样式</span>
+              <select id="footerPreset" data-setting="footerPreset">
+                <option value="none">无页脚</option>
+                <option value="right">右下页码</option>
+                <option value="center">居中页码</option>
+              </select>
+            </label>
+          </div>
           <label class="field header-field flex flex-col gap-1.5" data-header-field="title">
             <span>标题</span>
             <input id="title" data-setting="title" type="text" maxlength="30">

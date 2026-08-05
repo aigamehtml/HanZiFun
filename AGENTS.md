@@ -65,6 +65,7 @@ Tianzi and Mizi are grid styles, not templates. The selected grid style applies 
 - Blank practice paper does not require input text or stroke data. It should generate printable Tianzi or Mizi grid pages directly from layout settings.
 - Stroke order is for print, not animation-first. Prioritize static clarity: numbers, start dots, direction arrows, and step breakdowns.
 - Header information should be template-driven and optional: blank, simple title, homework, class, and teacher-style variants.
+- Footer style is independent from the header and supports no footer, bottom-right page numbers, or centered page numbers.
 - Standard tracing supports 1-6 rows per character, independently adjustable horizontal cell gaps and row gaps, and an optional guide character outside the grid strip.
 - Horizontal cell gaps must support a true `0mm`; SVG grid frames extend to the cell boundary and joined cells omit their left frame so shared edges render exactly once.
 - Standard tracing rows always fill the available width with whole cells. Do not restore a separate practice-cell-count setting.

@@ -49,6 +49,7 @@ Examples:
 - Toggling stroke numbers removes/adds numbers on the paper.
 - Changing trace opacity updates traced characters immediately.
 - Editing title/name/class/date updates the page header immediately.
+- Changing the footer preset immediately hides or repositions page numbers.
 
 ### 3. Quiet, Useful, Printable
 
@@ -128,7 +129,7 @@ Recommended structure:
 │ Paper               │       │     A4 preview     │       │
 │ Grid                │       │                    │       │
 │ Stroke Order        │       └────────────────────┘       │
-│ Header              │                                    │
+│ Header & Footer     │                                    │
 │ Print               │                                    │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -256,7 +257,12 @@ This group should be hidden or disabled for blank paper.
 - Student name
 - Class
 - Date
-- Page number
+
+### Footer
+
+- Footer preset: none, bottom-right page number, or centered page number
+- Footer settings remain independent from the selected header preset
+- Selecting no footer removes all app-generated page numbers from preview and print
 
 ### Actions
 
@@ -334,7 +340,7 @@ Purpose: everyday practice.
 
 Paper content:
 
-- Optional page header
+- Optional page header and footer
 - Character label or pinyin
 - One traced model cell
 - As many whole practice cells as fit the available row width
@@ -366,7 +372,7 @@ Rules:
 - Generates only grid cells.
 - Supports Tianzi or Mizi.
 - Uses page count, paper size, margin, grid size, rows, and columns.
-- Optional header.
+- Optional header and footer.
 
 ### Article Tracing
 

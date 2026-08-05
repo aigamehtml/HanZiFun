@@ -486,16 +486,22 @@ body[data-template="stroke"] .stroke-only {
   text-overflow: ellipsis;
 }
 
-.page-meta-field {
-  max-width: 28mm;
-}
-
-.page-number {
+.page-footer {
   position: absolute;
   right: var(--page-margin);
   bottom: 3.5mm;
+  left: var(--page-margin);
   color: #8a949b;
   font-size: 9px;
+  pointer-events: none;
+}
+
+.page-footer.footer-right {
+  text-align: right;
+}
+
+.page-footer.footer-center {
+  text-align: center;
 }
 
 .practice-list,
