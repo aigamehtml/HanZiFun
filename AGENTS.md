@@ -33,11 +33,12 @@ The app preloads 28 core characters and supports all 3500 first-level common cha
 
 Templates currently implemented:
 
-- Tianzi grid tracing
-- Mizi grid tracing
+- Tracing practice
 - Stroke-order breakdown
-- Blank Tianzi/Mizi practice paper
+- Blank practice paper
 - Article tracing with one visible input character per cell
+
+Tianzi and Mizi are grid styles, not templates. The selected grid style applies to tracing, stroke-order breakdown, blank paper, and article tracing.
 
 ## Technical Direction
 
@@ -60,7 +61,7 @@ Templates currently implemented:
 - Target character coverage: 3500 common Chinese characters.
 - Do not bundle all 3500 characters into the main payload. A rough `hanzi-writer-data@2.0.1` estimate showed a 3500-character gzip sample around 3.95MB, above the 200KB direct-bundle threshold.
 - Preferred data strategy: keep a tiny built-in set, fetch one 3.76MB ZIP on first extended-character use, selectively extract JSON entries with zip.js, keep a 16-chunk LRU in memory, and let the Service Worker cache the ZIP. Preserve script chunks for direct `file://` use, but exclude them from `dist/`.
-- Required formal templates: Tianzi grid tracing, Mizi grid tracing, stroke-order breakdown, blank practice paper, and article tracing.
+- Required formal templates: tracing practice, stroke-order breakdown, blank practice paper, and article tracing. Tianzi/Mizi is an independent grid-style setting shared by all templates.
 - Blank practice paper does not require input text or stroke data. It should generate printable Tianzi or Mizi grid pages directly from layout settings.
 - Stroke order is for print, not animation-first. Prioritize static clarity: numbers, start dots, direction arrows, and step breakdowns.
 - Header information should be template-driven and optional: blank, simple title, homework, class, and teacher-style variants.
@@ -70,7 +71,7 @@ Templates currently implemented:
 - Standard tracing supports both full-character-then-blank practice and cumulative stroke tracing. In cumulative mode, cell N contains strokes 1 through N, and cells after the final stroke repeat the full character.
 - Article tracing preserves repeated characters and punctuation, assigns one visible input character to each cell, and uses local-font fallback for punctuation or unsupported characters.
 - Preview zoom ranges from 35% to 150%. Command+wheel adjusts zoom on macOS, with Ctrl+wheel as the cross-platform equivalent.
-- Grid line color is user-configurable and applies to both outer frames and guide lines while preserving guide-line contrast.
+- Grid frame, center-cross, and Mizi-diagonal colors are independently configurable for every template.
 - Homework, class, and teacher headers need handwriting-sized field lines. Expanded header height must be included in pagination calculations.
 - Content should come from both manual input and built-in templates. Initial template categories: Tang poems, San Zi Jing sections, elementary common character groups, basic character structures, and common words.
 - Built-in content template insertion should support replacing current input by default and appending as an option.

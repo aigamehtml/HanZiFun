@@ -81,7 +81,8 @@ Opening the page should produce a useful worksheet without configuration.
 Default state:
 
 ```text
-Template: Tianzi tracing
+Template: tracing
+Grid: Tianzi
 Paper: A4
 Orientation: portrait
 Header: homework
@@ -218,10 +219,10 @@ Template categories:
 
 ### Template
 
-- Tianzi tracing
-- Mizi tracing
+- Tracing practice
 - Stroke-order breakdown
 - Blank paper
+- Article tracing
 
 ### Paper
 
@@ -232,10 +233,11 @@ Template categories:
 ### Grid
 
 - Tianzi / Mizi
+- Grid style is independent from the template and applies to every printable template.
 - Cell size
 - Rows per page: auto/manual
 - Cells per row: auto/manual
-- Line darkness
+- Separate frame, center-cross, and Mizi-diagonal colors
 - Guide line visibility
 
 ### Stroke Order
@@ -326,7 +328,7 @@ Requirements:
 
 ## Template Design
 
-### Tianzi Tracing
+### Tracing Practice
 
 Purpose: everyday practice.
 
@@ -336,14 +338,8 @@ Paper content:
 - Character label or pinyin
 - One traced model cell
 - As many whole practice cells as fit the available row width
-- Tianzi grid lines
+- Tianzi or Mizi grid lines selected independently
 - Optional stroke-order annotations on the model cell
-
-### Mizi Tracing
-
-Purpose: beginner structure and angle guidance.
-
-Same as Tianzi tracing, but with diagonal guide lines.
 
 ### Stroke-Order Breakdown
 

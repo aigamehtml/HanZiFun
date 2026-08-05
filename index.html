@@ -65,8 +65,7 @@
         <section class="control-section space-y-4">
           <h2>模板</h2>
           <div class="segmented template-segmented" role="radiogroup" aria-label="练习模板">
-            <label><input data-setting="template" type="radio" name="template" value="tian"> <span>田字描红</span></label>
-            <label><input data-setting="template" type="radio" name="template" value="mizi"> <span>米字描红</span></label>
+            <label><input data-setting="template" type="radio" name="template" value="trace"> <span>描红练习</span></label>
             <label><input data-setting="template" type="radio" name="template" value="stroke"> <span>笔顺分解</span></label>
             <label><input data-setting="template" type="radio" name="template" value="blank"> <span>空白格纸</span></label>
             <label><input data-setting="template" type="radio" name="template" value="copy"> <span>文章临摹</span></label>
@@ -93,6 +92,13 @@
               </select>
             </label>
           </div>
+          <div class="field space-y-1.5">
+            <span>格子样式</span>
+            <div class="segmented grid-style-segmented" role="radiogroup" aria-label="格子样式">
+              <label><input data-setting="gridStyle" type="radio" name="gridStyle" value="tian"> <span>田字格</span></label>
+              <label><input data-setting="gridStyle" type="radio" name="gridStyle" value="mi"> <span>米字格</span></label>
+            </div>
+          </div>
           <div class="field-grid grid grid-cols-2 items-end gap-x-3">
             <label class="field flex flex-col gap-1.5">
               <span>页边距（mm）</span>
@@ -113,10 +119,20 @@
               <input id="rowGapMm" data-setting="rowGapMm" type="number" min="0" max="16" step="0.5">
             </label>
           </div>
-          <label class="field color-field flex flex-col gap-1.5">
-            <span>格线颜色</span>
-            <input id="gridColor" data-setting="gridColor" type="color">
-          </label>
+          <div class="grid-color-grid">
+            <label class="field color-field flex flex-col gap-1.5">
+              <span>外框</span>
+              <input id="gridFrameColor" data-setting="gridFrameColor" type="color">
+            </label>
+            <label class="field color-field flex flex-col gap-1.5">
+              <span>中间十字</span>
+              <input id="gridCrossColor" data-setting="gridCrossColor" type="color">
+            </label>
+            <label class="field color-field flex flex-col gap-1.5">
+              <span>对角线</span>
+              <input id="gridDiagonalColor" data-setting="gridDiagonalColor" type="color">
+            </label>
+          </div>
           <div class="field-grid blank-layout-settings grid grid-cols-2 items-end gap-x-3">
             <label class="field flex flex-col gap-1.5">
               <span>每行格数（0 自动）</span>

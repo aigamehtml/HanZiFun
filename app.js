@@ -1,5 +1,5 @@
 const SETTINGS_KEY = "hanzifun.settings";
-const SETTINGS_VERSION = 5;
+const SETTINGS_VERSION = 6;
 const CSS_PX_PER_MM = 96 / 25.4;
 const VIEWBOX_SIZE = 1024;
 const BASELINE = 900;
@@ -22,7 +22,8 @@ const PAPER_SIZES = {
 const DEFAULT_SETTINGS = {
   settingsVersion: SETTINGS_VERSION,
   inputText: "人 口 日 月 水 火 山 田 木 永",
-  template: "tian",
+  template: "trace",
+  gridStyle: "tian",
   paperSize: "A4",
   orientation: "portrait",
   headerPreset: "homework",
@@ -47,7 +48,9 @@ const DEFAULT_SETTINGS = {
   showGuides: true,
   traceMode: "full",
   traceOpacity: 0.2,
-  gridColor: "#aebac2",
+  gridFrameColor: "#aebac2",
+  gridCrossColor: "#c9d2d8",
+  gridDiagonalColor: "#d8c6c6",
   zoom: 70,
 };
 
@@ -58,11 +61,15 @@ const NUMBER_FIELDS = new Set([
 ]);
 
 const TEMPLATE_LABELS = {
-  tian: "田字格描红",
-  mizi: "米字格描红",
+  trace: "描红练习",
   stroke: "笔顺分解",
   blank: "空白格纸",
   copy: "文章临摹",
+};
+
+const GRID_STYLE_LABELS = {
+  tian: "田字格",
+  mi: "米字格",
 };
 
 const els = {
@@ -109,6 +116,16 @@ function loadSettings() {
       const migrated = { ...stored };
       delete migrated.practiceCount;
       delete migrated.stepCount;
+      if (["tian", "mizi"].includes(migrated.template)) {
+        migrated.gridStyle = migrated.template === "mizi" ? "mi" : "tian";
+        migrated.template = "trace";
+      }
+      if (/^#[0-9a-f]{6}$/i.test(migrated.gridColor || "")) {
+        migrated.gridFrameColor ??= migrated.gridColor;
+        migrated.gridCrossColor ??= migrated.gridColor;
+        migrated.gridDiagonalColor ??= migrated.gridColor;
+      }
+      delete migrated.gridColor;
       return { ...DEFAULT_SETTINGS, ...migrated, settingsVersion: SETTINGS_VERSION };
     }
   } catch {
@@ -164,8 +181,8 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
 
-function gridColor() {
-  return /^#[0-9a-f]{6}$/i.test(settings.gridColor) ? settings.gridColor : DEFAULT_SETTINGS.gridColor;
+function settingColor(key) {
+  return /^#[0-9a-f]{6}$/i.test(settings[key]) ? settings[key] : DEFAULT_SETTINGS[key];
 }
 
 function headerReservedHeight() {
@@ -179,7 +196,7 @@ function paperDimensions() {
 }
 
 function gridStyle() {
-  return settings.template === "mizi" ? "mi" : "tian";
+  return settings.gridStyle === "mi" ? "mi" : "tian";
 }
 
 function pointToSvg(point) {
@@ -193,13 +210,13 @@ function makeGrid(type, options = {}) {
   const farEdge = VIEWBOX_SIZE - edge;
   const size = VIEWBOX_SIZE - edge * 2;
   const frame = options.joinLeft
-    ? `<path class="grid-line" d="M${edge} ${edge}H${farEdge}V${farEdge}H${edge}"></path>`
-    : `<rect class="grid-line" x="${edge}" y="${edge}" width="${size}" height="${size}"></rect>`;
+    ? `<path class="grid-frame-line" d="M${edge} ${edge}H${farEdge}V${farEdge}H${edge}"></path>`
+    : `<rect class="grid-frame-line" x="${edge}" y="${edge}" width="${size}" height="${size}"></rect>`;
   if (!settings.showGuides) return frame;
   const diagonals = type === "mi"
-    ? `<line class="guide-line" x1="${edge}" y1="${edge}" x2="${farEdge}" y2="${farEdge}"></line><line class="guide-line" x1="${farEdge}" y1="${edge}" x2="${edge}" y2="${farEdge}"></line>`
+    ? `<line class="grid-diagonal-line" x1="${edge}" y1="${edge}" x2="${farEdge}" y2="${farEdge}"></line><line class="grid-diagonal-line" x1="${farEdge}" y1="${edge}" x2="${edge}" y2="${farEdge}"></line>`
     : "";
-  return `${frame}<line class="guide-line" x1="512" y1="${edge}" x2="512" y2="${farEdge}"></line><line class="guide-line" x1="${edge}" y1="512" x2="${farEdge}" y2="512"></line>${diagonals}`;
+  return `${frame}<line class="grid-cross-line" x1="512" y1="${edge}" x2="512" y2="${farEdge}"></line><line class="grid-cross-line" x1="${edge}" y1="512" x2="${farEdge}" y2="512"></line>${diagonals}`;
 }
 
 function renderStrokePaths(data, options) {
@@ -251,9 +268,9 @@ function makeCharacterSvg(character, options = {}) {
 
 function makeCopyCell(character, options = {}) {
   if (window.HANZI_STROKES?.[character]) {
-    return makeCharacterSvg(character, { ...options, trace: true, gridStyle: "tian" });
+    return makeCharacterSvg(character, { ...options, trace: true, gridStyle: gridStyle() });
   }
-  const grid = makeGrid("tian", options);
+  const grid = makeGrid(gridStyle(), options);
   return `<svg class="hanzi-cell copy-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 临摹格">${grid}<text class="copy-glyph" x="512" y="650" opacity="${settings.traceOpacity}">${escapeHtml(character)}</text></svg>`;
 }
 
@@ -352,7 +369,7 @@ function headerFields(pageIndex, pageCount) {
 
 function makePage(body, pageIndex, pageCount, dimensions, extraClass = "") {
   return `<div class="page-shell" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm">
-    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-color:${gridColor()}">
+    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-frame-color:${settingColor("gridFrameColor")};--grid-cross-color:${settingColor("gridCrossColor")};--grid-diagonal-color:${settingColor("gridDiagonalColor")}">
       ${headerFields(pageIndex, pageCount)}${body}
       ${settings.headerPreset !== "teacher" ? `<span class="page-number">${pageIndex + 1} / ${pageCount}</span>` : ""}
     </section>
@@ -463,7 +480,7 @@ function renderCopyPages(text, dimensions) {
       const options = { joinLeft: settings.cellGapMm === 0 && index % columns !== 0 };
       return character !== undefined
         ? makeCopyCell(character, options)
-        : makeCharacterSvg("", { ...options, blank: true, gridStyle: "tian" });
+        : makeCharacterSvg("", { ...options, blank: true, gridStyle: gridStyle() });
     }).join("");
     const body = `<div class="blank-grid copy-grid" style="--blank-columns:${columns};--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm;--row-gap-mm:${settings.rowGapMm}mm">${cells}</div>`;
     return makePage(body, pageIndex, pageCount, dimensions, "copy-page");
@@ -642,7 +659,7 @@ function render() {
       : loading ? `正在解压 ${loading} 个字`
         : zipArchiveState === "ready" ? `ZIP 字库已就绪 · 内存 ${loadedChunks.size} 分片`
           : navigator.onLine ? "笔顺数据已就绪" : "离线可用";
-  els.compactStatus.textContent = `${settings.paperSize} · ${settings.orientation === "portrait" ? "纵向" : "横向"} · ${TEMPLATE_LABELS[settings.template]}`;
+  els.compactStatus.textContent = `${settings.paperSize} · ${settings.orientation === "portrait" ? "纵向" : "横向"} · ${GRID_STYLE_LABELS[gridStyle()]} · ${TEMPLATE_LABELS[settings.template]}`;
   document.body.dataset.template = settings.template;
   updateHeaderFieldVisibility();
   updateOutputs();

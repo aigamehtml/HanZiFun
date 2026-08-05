@@ -285,7 +285,13 @@ textarea:focus-visible {
 }
 
 .template-segmented {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.grid-color-grid {
+  display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .segmented label {
@@ -630,20 +636,31 @@ body[data-template="stroke"] .stroke-only {
   font-size: 13px;
 }
 
-svg .grid-line {
+svg .grid-frame-line,
+svg .grid-cross-line,
+svg .grid-diagonal-line {
   fill: none;
-  stroke: var(--grid-color, #aebac2);
   stroke-linecap: square;
   stroke-linejoin: miter;
+}
+
+svg .grid-frame-line {
+  stroke: var(--grid-frame-color, #aebac2);
   stroke-width: 9;
 }
 
-svg .guide-line {
-  fill: none;
-  stroke: var(--grid-color, #aebac2);
-  opacity: 0.55;
+svg .grid-cross-line,
+svg .grid-diagonal-line {
   stroke-width: 6;
   stroke-dasharray: 25 22;
+}
+
+svg .grid-cross-line {
+  stroke: var(--grid-cross-color, #c9d2d8);
+}
+
+svg .grid-diagonal-line {
+  stroke: var(--grid-diagonal-color, #d8c6c6);
 }
 
 svg .stroke,
