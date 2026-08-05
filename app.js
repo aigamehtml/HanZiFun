@@ -85,6 +85,8 @@ const els = {
   contentTemplate: document.querySelector("#contentTemplate"),
   replaceContentBtn: document.querySelector("#replaceContentBtn"),
   appendContentBtn: document.querySelector("#appendContentBtn"),
+  exportPdfBtn: document.querySelector("#exportPdfBtn"),
+  exportStatus: document.querySelector("#exportStatus"),
   printBtn: document.querySelector("#printBtn"),
   printNote: document.querySelector("#printNote"),
   installBtn: document.querySelector("#installBtn"),
@@ -109,6 +111,7 @@ const coreCharacters = new Set(Object.keys(window.HANZI_STROKES || {}));
 let activeChunkIds = new Set();
 const zipArchivePromises = new Map();
 const zipArchiveStates = new Map();
+let exportStatusTimer = 0;
 
 function loadSettings() {
   try {
@@ -626,6 +629,7 @@ function ensureCharacterData(characters) {
     });
     pendingChunks.set(chunkId, promise);
   }
+  return Promise.all(chunkIds.map((chunkId) => pendingChunks.get(chunkId)).filter(Boolean));
 }
 
 function activeZipPacks() {
@@ -757,6 +761,99 @@ function adjustStepper(button) {
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+function showExportStatus(message, isError = false) {
+  clearTimeout(exportStatusTimer);
+  els.exportStatus.textContent = message;
+  els.exportStatus.classList.toggle("error", isError);
+  els.exportStatus.hidden = false;
+  exportStatusTimer = setTimeout(() => { els.exportStatus.hidden = true; }, 5000);
+}
+
+function exportFilename() {
+  const fallback = TEMPLATE_LABELS[settings.template] || "汉字练习";
+  const title = String(settings.title || fallback).trim().replace(/[\\/:*?"<>|]/g, "-").slice(0, 48) || fallback;
+  return `${title}-${settings.paperSize}-${settings.orientation === "landscape" ? "横向" : "纵向"}.pdf`;
+}
+
+function pdfRenderScale(dimensions) {
+  const longestSidePx = Math.max(dimensions.width, dimensions.height) * CSS_PX_PER_MM;
+  return clamp(2400 / longestSidePx, 1.5, 2);
+}
+
+async function preparePdfPages() {
+  if (settings.template !== "blank") {
+    const characters = extractCharacters(settings.inputText, settings.template === "copy" ? false : settings.dedupe);
+    const unsupported = unsupportedCharacters(characters);
+    const printable = characters.filter((character) => !unsupported.includes(character));
+    await ensureCharacterData(printable);
+    const missing = printable.filter((character) => !window.HANZI_STROKES?.[character]);
+    if (missing.length && settings.template !== "copy") throw new Error(`笔顺数据载入失败：${missing.join(" ")}`);
+  }
+  if (document.fonts?.ready) await document.fonts.ready;
+  render();
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+}
+
+async function exportPdf() {
+  if (els.exportPdfBtn.disabled) return;
+  const originalLabel = els.exportPdfBtn.textContent;
+  els.exportPdfBtn.disabled = true;
+  els.exportPdfBtn.setAttribute("aria-busy", "true");
+  els.exportPdfBtn.textContent = "生成中…";
+  try {
+    await preparePdfPages();
+    await Promise.all([
+      loadScript("vendor/html2canvas.min.js"),
+      loadScript("vendor/jspdf.umd.min.js"),
+    ]);
+    if (!window.html2canvas || !window.jspdf?.jsPDF) throw new Error("PDF 组件载入失败");
+
+    const dimensions = paperDimensions();
+    const orientation = dimensions.width > dimensions.height ? "landscape" : "portrait";
+    const pdf = new window.jspdf.jsPDF({
+      orientation,
+      unit: "mm",
+      format: [dimensions.width, dimensions.height],
+      compress: true,
+    });
+    const pages = [...els.pages.querySelectorAll(".page")];
+    const scale = pdfRenderScale(dimensions);
+
+    for (const [index, page] of pages.entries()) {
+      const canvas = await window.html2canvas(page, {
+        backgroundColor: "#ffffff",
+        logging: false,
+        scale,
+        useCORS: false,
+        onclone(clonedDocument) {
+          clonedDocument.documentElement.style.setProperty("--preview-scale", "1");
+          for (const clonedPage of clonedDocument.querySelectorAll(".page")) {
+            clonedPage.style.position = "relative";
+            clonedPage.style.inset = "auto";
+            clonedPage.style.transform = "none";
+            clonedPage.style.boxShadow = "none";
+          }
+        },
+      });
+      if (index > 0) pdf.addPage([dimensions.width, dimensions.height], orientation);
+      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, dimensions.width, dimensions.height, undefined, "FAST");
+      canvas.width = 1;
+      canvas.height = 1;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+
+    pdf.save(exportFilename());
+    showExportStatus(`已生成 ${pages.length} 页 PDF`);
+  } catch (error) {
+    console.error(error);
+    showExportStatus(error?.message || "PDF 导出失败，请重试", true);
+  } finally {
+    els.exportPdfBtn.disabled = false;
+    els.exportPdfBtn.removeAttribute("aria-busy");
+    els.exportPdfBtn.textContent = originalLabel;
+  }
+}
+
 function updateHeaderFieldVisibility() {
   const visible = {
     title: settings.headerPreset !== "blank",
@@ -844,6 +941,7 @@ function init() {
     applySettingsToControls();
     scheduleRender();
   });
+  els.exportPdfBtn.addEventListener("click", exportPdf);
   els.printBtn.addEventListener("click", () => {
     els.printNote.hidden = false;
     setTimeout(() => { els.printNote.hidden = true; }, 5000);

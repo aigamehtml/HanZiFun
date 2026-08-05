@@ -55,6 +55,7 @@ Tianzi and Mizi are grid styles, not templates. The selected grid style applies 
 - Persist settings and optionally input text in `localStorage` with a `settingsVersion`.
 - Treat mobile as a first-class responsive target: scaled paper preview, no page-level horizontal scrolling, touch-friendly controls.
 - Support PWA installation with a manifest, service worker, app icons, standalone display, and basic offline caching.
+- Direct PDF export uses locally vendored html2canvas and jsPDF runtimes, loaded on demand and cached for offline use. Keep browser printing as a separate action.
 - Stroke data comes from `hanzi-writer-data`, derived from Make Me A Hanzi. Preserve attribution and license notes when expanding data.
 
 ## Product Decisions

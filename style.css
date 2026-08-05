@@ -846,7 +846,8 @@ svg .copy-glyph {
   display: none;
 }
 
-.print-note {
+.print-note,
+.export-status {
   position: fixed;
   z-index: 100;
   right: 18px;
@@ -860,6 +861,16 @@ svg .copy-glyph {
   color: #33434d;
   font-size: 13px;
   line-height: 1.55;
+}
+
+.export-status.error {
+  border-color: #d9a192;
+  color: #8f2f12;
+}
+
+.export-button[aria-busy="true"] {
+  cursor: wait;
+  opacity: 0.78;
 }
 
 [hidden] {
@@ -1035,6 +1046,10 @@ svg .copy-glyph {
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
+  .app-actions .button {
+    padding-inline: 8px;
+  }
+
   .field-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -1062,7 +1077,8 @@ svg .copy-glyph {
   .controls,
   .drawer-backdrop,
   .preview-toolbar,
-  .print-note {
+  .print-note,
+  .export-status {
     display: none !important;
   }
 

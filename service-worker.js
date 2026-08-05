@@ -9,6 +9,8 @@ const APP_SHELL = [
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./vendor/zip.min.js",
+  "./vendor/html2canvas.min.js",
+  "./vendor/jspdf.umd.min.js",
   "./data/content-templates.js",
   "./data/strokes.js",
   "./data/stroke-index.js",

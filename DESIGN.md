@@ -272,7 +272,8 @@ This group should be hidden or disabled for blank paper.
 
 ### Actions
 
-- Print / Save PDF
+- Export PDF directly
+- Print using the browser dialog
 - Restore defaults
 - Clear content
 

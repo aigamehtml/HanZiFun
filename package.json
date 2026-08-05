@@ -22,6 +22,8 @@
     "esbuild": "^0.25.0",
     "hanzi-writer-data": "2.0.1",
     "html-minifier-terser": "^7.2.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "pinyin-pro": "^3.27.0",
     "tailwindcss": "^4.3.3"
   }

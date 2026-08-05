@@ -28,3 +28,11 @@ BSD 3-Clause License. A copy of its license is included with the vendored runtim
 
 - https://github.com/gildas-lormeau/zip.js
 - `vendor/zip.LICENSE`
+
+Direct PDF export uses html2canvas and jsPDF, both distributed under the MIT
+License. Copies of their licenses are included with the vendored runtimes:
+
+- https://github.com/niklasvh/html2canvas
+- `vendor/html2canvas.LICENSE`
+- https://github.com/parallax/jsPDF
+- `vendor/jspdf.LICENSE`
