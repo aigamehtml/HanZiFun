@@ -172,7 +172,9 @@ function pointToSvg(point) {
 }
 
 function makeGrid(type, options = {}) {
-  const edge = 5;
+  // Keep the frame clear of the SVG clipping edge so print rasterization
+  // cannot drop the left or bottom stroke at some scaling factors.
+  const edge = 8;
   const farEdge = VIEWBOX_SIZE - edge;
   const size = VIEWBOX_SIZE - edge * 2;
   const frame = options.joinLeft
@@ -389,15 +391,17 @@ function renderCopyPages(items, dimensions) {
   const automaticRows = Math.max(1, Math.floor((usableHeight + settings.rowGapMm) / (settings.cellSizeMm + settings.rowGapMm)));
   const columns = settings.cellsPerRow > 0 ? Math.min(settings.cellsPerRow, automaticColumns) : automaticColumns;
   const rows = settings.rowsPerPage > 0 ? Math.min(settings.rowsPerPage, automaticRows) : automaticRows;
-  const pageItems = chunk(items, columns * rows);
+  const pageCapacity = columns * rows;
+  const pageItems = chunk(items, pageCapacity);
   if (!pageItems.length) pageItems.push([]);
   const markup = pageItems.map((itemsOnPage, pageIndex) => {
-    const cells = itemsOnPage.map((character, index) => makeCopyCell(character, {
-      joinLeft: settings.cellGapMm === 0 && index % columns !== 0,
-    })).join("");
-    const body = cells
-      ? `<div class="blank-grid copy-grid" style="--blank-columns:${columns};--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm;--row-gap-mm:${settings.rowGapMm}mm">${cells}</div>`
-      : '<div class="empty-page-message">请在左侧输入要临摹的文章</div>';
+    const cells = Array.from({ length: pageCapacity }, (_, index) => {
+      const options = { joinLeft: settings.cellGapMm === 0 && index % columns !== 0 };
+      return index < itemsOnPage.length
+        ? makeCopyCell(itemsOnPage[index], options)
+        : makeCharacterSvg("", { ...options, blank: true, gridStyle: "tian" });
+    }).join("");
+    const body = `<div class="blank-grid copy-grid" style="--blank-columns:${columns};--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm;--row-gap-mm:${settings.rowGapMm}mm">${cells}</div>`;
     return makePage(body, pageIndex, pageItems.length, dimensions, "copy-page");
   }).join("");
   return { markup, pageCount: pageItems.length, columns, rows };

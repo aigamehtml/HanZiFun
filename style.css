@@ -626,6 +626,8 @@ body[data-template="stroke"] .stroke-only {
 svg .grid-line {
   fill: none;
   stroke: var(--grid-color, #aebac2);
+  stroke-linecap: square;
+  stroke-linejoin: miter;
   stroke-width: 9;
 }
 
