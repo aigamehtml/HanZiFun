@@ -248,12 +248,6 @@ function pinyinFor(character) {
 
 function makePracticeCells(character, cellCount) {
   const joinLeft = settings.cellGapMm === 0;
-  if (settings.traceMode === "progressive") {
-    const strokeCount = window.HANZI_STROKES?.[character]?.strokes.length || 1;
-    return Array.from({ length: cellCount }, (_, index) =>
-      makeCharacterSvg(character, { trace: true, mode: "step", step: Math.min(index, strokeCount - 1), joinLeft })
-    ).join("");
-  }
   return Array.from({ length: cellCount }, (_, index) =>
     makeCharacterSvg(character, index === 0
       ? { trace: true, annotate: true, joinLeft }
@@ -261,14 +255,42 @@ function makePracticeCells(character, cellCount) {
   ).join("");
 }
 
-function makeStandardRow(character, practiceCellCount) {
+function progressiveRowsNeeded(character, maximumCells) {
+  const strokeCount = window.HANZI_STROKES?.[character]?.strokes.length || 1;
+  const firstRowCapacity = maximumCells - 1;
+  return strokeCount <= firstRowCapacity
+    ? 1
+    : 1 + Math.ceil((strokeCount - firstRowCapacity) / maximumCells);
+}
+
+function makeProgressiveCells(character, cellCount, startStep, hasLeadingCell) {
+  const strokeCount = window.HANZI_STROKES?.[character]?.strokes.length || 1;
+  return Array.from({ length: cellCount }, (_, index) => makeCharacterSvg(character, {
+    trace: true,
+    mode: "step",
+    step: Math.min(startStep + index, strokeCount - 1),
+    joinLeft: settings.cellGapMm === 0 && (hasLeadingCell || index > 0),
+  })).join("");
+}
+
+function makeStandardRow(row, maximumCells) {
+  const { character, rowIndex } = row;
   const rowClass = settings.showRowGuide ? "char-row" : "char-row no-row-guide";
   const rowStyle = `style="--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm"`;
   const guide = settings.showRowGuide
     ? `<div class="char-info"><span class="pinyin">${escapeHtml(pinyinFor(character))}</span><strong>${escapeHtml(character)}</strong></div>`
     : "";
+  let cells;
+  if (settings.traceMode === "progressive") {
+    const isFirstRow = rowIndex === 0;
+    const startStep = isFirstRow ? 0 : maximumCells - 1 + (rowIndex - 1) * maximumCells;
+    const leadingCell = isFirstRow ? makeCharacterSvg(character) : "";
+    cells = `${leadingCell}${makeProgressiveCells(character, maximumCells - (isFirstRow ? 1 : 0), startStep, isFirstRow)}`;
+  } else {
+    cells = `${makeCharacterSvg(character)}${makePracticeCells(character, maximumCells - 1)}`;
+  }
   return `<article class="${rowClass}" ${rowStyle}>
-    ${guide}<div class="exercise-strip">${makeCharacterSvg(character)}${makePracticeCells(character, practiceCellCount)}</div>
+    ${guide}<div class="exercise-strip">${cells}</div>
   </article>`;
 }
 
@@ -319,14 +341,19 @@ function renderStandardPages(characters, dimensions) {
   const guideWidth = settings.showRowGuide ? 17.5 : 0;
   const exerciseWidth = Math.max(settings.cellSizeMm * 2, usableWidth - guideWidth);
   const maximumCells = Math.max(2, Math.floor((exerciseWidth + settings.cellGapMm) / (settings.cellSizeMm + settings.cellGapMm)));
-  const practiceCellCount = maximumCells - 1;
   const automaticRows = Math.max(1, Math.floor((usableHeight + settings.rowGapMm) / (settings.cellSizeMm + settings.rowGapMm)));
   const rows = settings.rowsPerPage > 0 ? Math.min(settings.rowsPerPage, automaticRows) : automaticRows;
-  const rowsPerCharacter = clamp(Math.round(settings.rowsPerCharacter), 1, 6);
+  const configuredRowsPerCharacter = clamp(Math.round(settings.rowsPerCharacter), 1, 6);
+  let rowsPerCharacter = configuredRowsPerCharacter;
+  let autoExpandedRows = false;
   const pages = [];
   let currentPage = [];
   for (const character of characters) {
-    const characterRows = Array.from({ length: rowsPerCharacter }, () => character);
+    const requiredRows = settings.traceMode === "progressive" ? progressiveRowsNeeded(character, maximumCells) : 1;
+    const characterRowCount = Math.max(configuredRowsPerCharacter, requiredRows);
+    rowsPerCharacter = Math.max(rowsPerCharacter, characterRowCount);
+    if (requiredRows > configuredRowsPerCharacter) autoExpandedRows = true;
+    const characterRows = Array.from({ length: characterRowCount }, (_, rowIndex) => ({ character, rowIndex }));
     if (currentPage.length && characterRows.length <= rows && currentPage.length + characterRows.length > rows) {
       pages.push(currentPage);
       currentPage = [];
@@ -344,11 +371,11 @@ function renderStandardPages(characters, dimensions) {
   if (!pages.length) pages.push([]);
   const markup = pages.map((pageRows, pageIndex) => {
     const body = pageRows.length
-      ? `<div class="practice-list" style="--row-gap-mm:${settings.rowGapMm}mm">${pageRows.map((character) => makeStandardRow(character, practiceCellCount)).join("")}</div>`
+      ? `<div class="practice-list" style="--row-gap-mm:${settings.rowGapMm}mm">${pageRows.map((row) => makeStandardRow(row, maximumCells)).join("")}</div>`
       : '<div class="empty-page-message">请在左侧输入要练习的汉字</div>';
     return makePage(body, pageIndex, pages.length, dimensions);
   }).join("");
-  return { markup, pageCount: pages.length, rowsPerCharacter };
+  return { markup, pageCount: pages.length, rowsPerCharacter, autoExpandedRows };
 }
 
 function renderStrokePages(characters, dimensions) {
@@ -565,7 +592,8 @@ function render() {
     : settings.template === "copy"
       ? `${copyItems.length} 个字符 · ${result.pageCount} 页`
       : `${printable.length} 个字 · ${result.pageCount} 页`;
-  if (result.rowsPerCharacter > 1) summary += ` · 每字 ${result.rowsPerCharacter} 行`;
+  if (result.autoExpandedRows) summary += ` · 笔顺最多 ${result.rowsPerCharacter} 行`;
+  else if (result.rowsPerCharacter > 1) summary += ` · 每字 ${result.rowsPerCharacter} 行`;
   els.summary.textContent = summary;
   els.contentStatus.textContent = settings.template === "copy"
     ? `${copyItems.length} 个字符${unsupported.length ? ` · ${unsupported.length} 字使用字体` : ""}`
