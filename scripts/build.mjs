@@ -9,7 +9,19 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "dist");
 const packageVersion = JSON.parse(await readFile(path.join(root, "package.json"), "utf8")).version;
 const fingerprint = createHash("sha256");
-for (const file of ["index.html", "style.css", "app.js", "service-worker.js"]) {
+for (const file of [
+  "index.html",
+  "style.css",
+  "app.js",
+  "service-worker.js",
+  "manifest.webmanifest",
+  "icons/icon-192.png",
+  "icons/icon-512.png",
+  "data/content-templates.js",
+  "data/strokes.js",
+  "data/stroke-index.js",
+  "data/pinyin.js",
+]) {
   fingerprint.update(await readFile(path.join(root, file)));
 }
 const version = `v${packageVersion}-${fingerprint.digest("hex").slice(0, 10)}`;
