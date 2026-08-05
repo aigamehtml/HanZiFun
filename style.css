@@ -507,6 +507,36 @@ body[data-template="stroke"] .stroke-only {
   white-space: nowrap;
 }
 
+.summary-group strong[data-state="loading"] {
+  color: var(--accent-dark);
+}
+
+#dataStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#dataStatus[data-state="loading"] {
+  color: var(--accent-dark);
+  font-weight: 650;
+}
+
+#dataStatus[data-state="loading"]::before {
+  width: 11px;
+  height: 11px;
+  border: 2px solid #b8d2db;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  content: "";
+  animation: loading-spin 800ms linear infinite;
+}
+
+#dataStatus[data-state="error"] {
+  color: #9a3518;
+  font-weight: 650;
+}
+
 .zoom-control {
   flex: 0 0 auto;
   gap: 8px;
@@ -824,11 +854,14 @@ svg .order-label {
   text-anchor: middle;
 }
 
-svg .fallback-glyph {
-  fill: #a5afb6;
-  font-family: "Kaiti SC", "STKaiti", serif;
-  font-size: 620px;
-  text-anchor: middle;
+svg .pending-ring {
+  fill: none;
+  stroke: var(--accent);
+  stroke-dasharray: 160 420;
+  stroke-linecap: round;
+  stroke-width: 28;
+  transform-origin: 512px 512px;
+  animation: loading-spin 900ms linear infinite;
 }
 
 svg .copy-glyph {
@@ -840,6 +873,60 @@ svg .copy-glyph {
 
 .pending-cell {
   opacity: 0.62;
+}
+
+.preview-data-state {
+  display: grid;
+  min-height: 86mm;
+  place-content: center;
+  justify-items: center;
+  gap: 2.5mm;
+  border: 0.3mm dashed #cbd6dc;
+  color: #66757e;
+  text-align: center;
+}
+
+.preview-data-state strong {
+  color: #273943;
+  font-size: 15px;
+}
+
+.preview-data-state span:last-child {
+  font-size: 10px;
+}
+
+.preview-loading-spinner,
+.preview-error-mark {
+  display: grid;
+  width: 8mm;
+  height: 8mm;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.preview-loading-spinner {
+  border: 0.8mm solid #d8e5ea;
+  border-top-color: var(--accent);
+  animation: loading-spin 800ms linear infinite;
+}
+
+.preview-error-mark {
+  border: 0.5mm solid #d7a292;
+  color: #9a3518;
+  font-size: 16px;
+  font-weight: 750;
+}
+
+@keyframes loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #dataStatus[data-state="loading"]::before,
+  svg .pending-ring,
+  .preview-loading-spinner {
+    animation: none;
+  }
 }
 
 .drawer-backdrop {

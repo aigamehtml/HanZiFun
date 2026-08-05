@@ -1,5 +1,6 @@
 const SETTINGS_KEY = "hanzifun.settings";
 const SETTINGS_VERSION = 7;
+const APP_TITLE = "汉字 Fun";
 const CSS_PX_PER_MM = 96 / 25.4;
 const VIEWBOX_SIZE = 1024;
 const BASELINE = 900;
@@ -263,7 +264,7 @@ function makeCharacterSvg(character, options = {}) {
     return `<svg class="hanzi-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="空白练习格">${grid}</svg>`;
   }
   if (!data) {
-    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="fallback-glyph" x="512" y="640">${escapeHtml(character)}</text></svg>`;
+    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<circle class="pending-ring" cx="512" cy="512" r="92"></circle></svg>`;
   }
   const paths = renderStrokePaths(data, options);
   const annotations = options.annotate ? renderAnnotations(data) : "";
@@ -496,6 +497,19 @@ function renderCopyPages(text, dimensions) {
   return { markup, pageCount, columns, rows };
 }
 
+function renderDataStatePage(dimensions, state) {
+  const loading = state === "loading";
+  const title = loading ? "笔顺加载中…" : "笔顺数据加载失败";
+  const detail = loading ? "正在准备练习内容，请稍候" : "请检查网络连接后刷新页面重试";
+  const indicator = loading
+    ? '<span class="preview-loading-spinner" aria-hidden="true"></span>'
+    : '<span class="preview-error-mark" aria-hidden="true">!</span>';
+  const body = `<div class="preview-data-state ${state}" role="status" aria-live="polite">
+    ${indicator}<strong>${title}</strong><span>${detail}</span>
+  </div>`;
+  return { markup: makePage(body, 0, 1, dimensions, "data-state-page"), pageCount: 1 };
+}
+
 function unsupportedCharacters(characters) {
   return [...new Set(characters.filter((character) => !window.HANZI_STROKES?.[character] && !window.HANZI_CHUNK_INDEX?.[character]))];
 }
@@ -661,11 +675,18 @@ function render() {
   const characters = extractCharacters(settings.inputText, settings.template === "copy" ? false : settings.dedupe);
   const unsupported = unsupportedCharacters(characters);
   const printable = characters.filter((character) => !unsupported.includes(character));
-  let result;
-
   if (settings.template !== "blank") ensureCharacterData(printable);
 
-  if (settings.template === "blank") result = renderBlankPages(dimensions);
+  const loaded = printable.filter((character) => window.HANZI_STROKES?.[character]).length;
+  const loading = printable.length - loaded;
+  const activeFailedChunks = [...activeChunkIds].filter((chunkId) => failedChunks.has(chunkId));
+  const dataState = settings.template === "blank" || loading === 0
+    ? "ready"
+    : activeFailedChunks.length ? "error" : "loading";
+  let result;
+
+  if (dataState !== "ready") result = renderDataStatePage(dimensions, dataState);
+  else if (settings.template === "blank") result = renderBlankPages(dimensions);
   else if (settings.template === "copy") result = renderCopyPages(settings.inputText, dimensions);
   else if (settings.template === "stroke") result = renderStrokePages(printable, dimensions);
   else result = renderStandardPages(printable, dimensions);
@@ -674,9 +695,12 @@ function render() {
   updatePreviewScale(dimensions);
   els.printPageStyle.textContent = `@page { size: ${dimensions.width}mm ${dimensions.height}mm; margin: 0; }`;
 
-  const loaded = printable.filter((character) => window.HANZI_STROKES?.[character]).length;
-  const loading = printable.length - loaded;
-  let summary = settings.template === "blank"
+  const contentAmount = settings.template === "copy" ? `${copyItems.length} 个字符` : `${printable.length} 个字`;
+  let summary = dataState === "loading"
+    ? `${contentAmount} · 笔顺加载中…`
+    : dataState === "error"
+      ? `${contentAmount} · 笔顺加载失败`
+      : settings.template === "blank"
     ? `${result.pageCount} 页 · ${result.columns} × ${result.rows} 格`
     : settings.template === "copy"
       ? `${copyItems.length} 个字符 · ${result.pageCount} 页`
@@ -691,13 +715,22 @@ function render() {
   const loadingPacks = activePacks.filter((pack) => zipArchiveStates.get(pack.id) === "loading");
   const readyPackCount = [...zipArchiveStates.values()].filter((state) => state === "ready").length;
   const loadingMegabytes = (loadingPacks.reduce((total, pack) => total + (pack.bytes || 0), 0) / 1024 / 1024).toFixed(1);
-  els.dataStatus.textContent = failedChunks.size
-    ? `${failedChunks.size} 个笔顺分片加载失败`
+  els.dataStatus.textContent = activeFailedChunks.length
+    ? `${activeFailedChunks.length} 个笔顺分片加载失败`
     : loadingPacks.length ? `正在加载 ${loadingMegabytes}MB 笔顺字库`
       : loading ? `正在解压 ${loading} 个字`
         : readyPackCount ? `ZIP 字库已就绪 · ${readyPackCount} 包 · 内存 ${loadedChunks.size} 分片`
           : navigator.onLine ? "笔顺数据已就绪" : "离线可用";
-  els.compactStatus.textContent = `${settings.paperSize} · ${settings.orientation === "portrait" ? "纵向" : "横向"} · ${GRID_STYLE_LABELS[gridStyle()]} · ${TEMPLATE_LABELS[settings.template]}`;
+  els.dataStatus.dataset.state = dataState;
+  els.dataStatus.setAttribute("aria-busy", dataState === "loading" ? "true" : "false");
+  els.summary.dataset.state = dataState;
+  els.pages.setAttribute("aria-busy", dataState === "loading" ? "true" : "false");
+  els.printBtn.disabled = dataState !== "ready";
+  const compactSuffix = dataState === "loading" ? " · 笔顺加载中…" : dataState === "error" ? " · 笔顺加载失败" : "";
+  els.compactStatus.textContent = `${settings.paperSize} · ${settings.orientation === "portrait" ? "纵向" : "横向"} · ${GRID_STYLE_LABELS[gridStyle()]} · ${TEMPLATE_LABELS[settings.template]}${compactSuffix}`;
+  document.title = dataState === "loading"
+    ? `${APP_TITLE}（笔顺加载中…）`
+    : dataState === "error" ? `${APP_TITLE}（笔顺加载失败）` : APP_TITLE;
   document.body.dataset.template = settings.template;
   updateHeaderFieldVisibility();
   updateOutputs();

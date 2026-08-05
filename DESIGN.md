@@ -198,6 +198,8 @@ When installed as a PWA:
 - Keep a compact app bar visible.
 - Restore the user's latest settings on launch.
 - Show offline status only when it affects available data.
+- Show a prominent loading state in the browser title and preview whenever an on-demand stroke ZIP is being downloaded or decompressed.
+- Do not mix temporary font glyphs with final SVG stroke glyphs while stroke data is loading.
 
 ## Information Architecture
 
