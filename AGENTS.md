@@ -2,7 +2,7 @@
 
 ## Project Context
 
-HanZiFun is a static, offline-first Chinese handwriting practice workbook generator for children. The current MVP is a pure HTML/CSS/JavaScript demo that renders A4 printable practice pages with stroke-order hints.
+HanZiFun is a static, offline-first Chinese handwriting practice workbook generator for children. The current MVP is a pure HTML/CSS/JavaScript demo that renders printable practice pages with stroke-order hints.
 
 Use this directory as the project root for future work:
 
@@ -36,8 +36,23 @@ Templates currently implemented:
 - Keep the app static and offline-capable.
 - Avoid CDN/runtime network dependencies.
 - Prefer SVG for character strokes, grids, arrows, and print-safe rendering.
-- Keep A4 print layout accurate in millimeters.
+- Keep print layout accurate in millimeters.
+- Support paper sizes A5, A4, A3, and Letter.
+- Support portrait and landscape orientation.
+- All settings should update the preview immediately. The app should be WYSIWYG.
+- Persist settings and optionally input text in `localStorage` with a `settingsVersion`.
 - Stroke data comes from `hanzi-writer-data`, derived from Make Me A Hanzi. Preserve attribution and license notes when expanding data.
+
+## Product Decisions
+
+- Target users: both parents and teachers.
+- Target character coverage: 3500 common Chinese characters.
+- Do not bundle all 3500 characters into the main payload. A rough `hanzi-writer-data@2.0.1` estimate showed a 3500-character gzip sample around 3.95MB, above the 200KB direct-bundle threshold.
+- Preferred data strategy: keep a tiny built-in demo set, load character JSON on demand, cache loaded data locally, and support a full offline data folder/package.
+- Required formal templates: Tianzi grid tracing, Mizi grid tracing, stroke-order breakdown, and blank practice paper.
+- Blank practice paper does not require input text or stroke data. It should generate printable Tianzi or Mizi grid pages directly from layout settings.
+- Stroke order is for print, not animation-first. Prioritize static clarity: numbers, start dots, direction arrows, and step breakdowns.
+- Header information should be template-driven and optional: blank, simple title, homework, class, and teacher-style variants.
 
 ## Local Run
 
