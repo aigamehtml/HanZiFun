@@ -335,7 +335,7 @@ Paper content:
 - Optional page header
 - Character label or pinyin
 - One traced model cell
-- Repeated blank practice cells
+- As many whole practice cells as fit the available row width
 - Tianzi grid lines
 - Optional stroke-order annotations on the model cell
 
@@ -371,6 +371,18 @@ Rules:
 - Supports Tianzi or Mizi.
 - Uses page count, paper size, margin, grid size, rows, and columns.
 - Optional header.
+
+### Article Tracing
+
+Purpose: tracing poems, passages, and classroom text in reading order.
+
+Rules:
+
+- Every visible input character occupies exactly one cell.
+- Repeated characters and punctuation are preserved.
+- Supported Hanzi use SVG stroke paths; punctuation and unsupported characters use a local-font fallback.
+- Cells flow left-to-right and top-to-bottom, then continue on the next page.
+- Practice-only controls are hidden because rows and pages are filled automatically.
 
 ## States And Feedback
 

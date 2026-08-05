@@ -196,6 +196,7 @@ textarea:focus-visible {
 }
 
 .field input[type="text"],
+.field input:not([type]),
 .field input[type="date"],
 .field input[type="number"],
 .field select,
@@ -283,6 +284,10 @@ textarea:focus-visible {
   gap: 7px;
 }
 
+.template-segmented {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .segmented label {
   position: relative;
 }
@@ -328,7 +333,9 @@ body[data-template="blank"] .blank-only {
 body[data-template="blank"] .practice-settings,
 body[data-template="blank"] .standard-only,
 body[data-template="blank"] .stroke-options,
-body[data-template="stroke"] .standard-only {
+body[data-template="stroke"] .standard-only,
+body[data-template="copy"] .practice-settings,
+body[data-template="copy"] .content-options {
   display: none;
 }
 
@@ -394,6 +401,8 @@ body[data-template="stroke"] .stroke-only {
 
 .pages {
   display: grid;
+  width: max-content;
+  min-width: 100%;
   justify-items: center;
   gap: 22px;
 }
@@ -670,6 +679,13 @@ svg .fallback-glyph {
   text-anchor: middle;
 }
 
+svg .copy-glyph {
+  fill: var(--stroke-active);
+  font-family: "Kaiti SC", "STKaiti", serif;
+  font-size: 620px;
+  text-anchor: middle;
+}
+
 .pending-cell {
   opacity: 0.62;
 }
@@ -814,6 +830,7 @@ svg .fallback-glyph {
   }
 
   .field input[type="text"],
+  .field input:not([type]),
   .field input[type="date"],
   .field input[type="number"],
   .field input[type="color"],

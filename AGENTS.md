@@ -37,6 +37,7 @@ Templates currently implemented:
 - Mizi grid tracing
 - Stroke-order breakdown
 - Blank Tianzi/Mizi practice paper
+- Article tracing with one visible input character per cell
 
 ## Technical Direction
 
@@ -59,13 +60,16 @@ Templates currently implemented:
 - Target character coverage: 3500 common Chinese characters.
 - Do not bundle all 3500 characters into the main payload. A rough `hanzi-writer-data@2.0.1` estimate showed a 3500-character gzip sample around 3.95MB, above the 200KB direct-bundle threshold.
 - Preferred data strategy: keep a tiny built-in set, fetch one 3.76MB ZIP on first extended-character use, selectively extract JSON entries with zip.js, keep a 16-chunk LRU in memory, and let the Service Worker cache the ZIP. Preserve script chunks for direct `file://` use, but exclude them from `dist/`.
-- Required formal templates: Tianzi grid tracing, Mizi grid tracing, stroke-order breakdown, and blank practice paper.
+- Required formal templates: Tianzi grid tracing, Mizi grid tracing, stroke-order breakdown, blank practice paper, and article tracing.
 - Blank practice paper does not require input text or stroke data. It should generate printable Tianzi or Mizi grid pages directly from layout settings.
 - Stroke order is for print, not animation-first. Prioritize static clarity: numbers, start dots, direction arrows, and step breakdowns.
 - Header information should be template-driven and optional: blank, simple title, homework, class, and teacher-style variants.
 - Standard tracing supports 1-6 rows per character, independently adjustable horizontal cell gaps and row gaps, and an optional guide character outside the grid strip.
-- Horizontal cell gaps must support a true `0mm`; SVG grid frames therefore extend to the cell boundary so adjacent frames visually meet.
+- Horizontal cell gaps must support a true `0mm`; SVG grid frames extend to the cell boundary and joined cells omit their left frame so shared edges render exactly once.
+- Standard tracing rows always fill the available width with whole cells. Do not restore a separate practice-cell-count setting.
 - Standard tracing supports both full-character-then-blank practice and cumulative stroke tracing. In cumulative mode, cell N contains strokes 1 through N, and cells after the final stroke repeat the full character.
+- Article tracing preserves repeated characters and punctuation, assigns one visible input character to each cell, and uses local-font fallback for punctuation or unsupported characters.
+- Preview zoom ranges from 35% to 150%. Command+wheel adjusts zoom on macOS, with Ctrl+wheel as the cross-platform equivalent.
 - Grid line color is user-configurable and applies to both outer frames and guide lines while preserving guide-line contrast.
 - Homework, class, and teacher headers need handwriting-sized field lines. Expanded header height must be included in pagination calculations.
 - Content should come from both manual input and built-in templates. Initial template categories: Tang poems, San Zi Jing sections, elementary common character groups, basic character structures, and common words.
@@ -130,7 +134,7 @@ curl -I http://localhost:8765/
 curl -I http://localhost:8765/data/stroke-index.js
 ```
 
-For render sanity, verify all four templates, on-demand loading, local persistence, A5/A4/A3/Letter portrait and landscape, and mobile settings drawer behavior. The default baseline remains:
+For render sanity, verify all five templates, on-demand loading, local persistence, A5/A4/A3/Letter portrait and landscape, and mobile settings drawer behavior. The default baseline remains:
 
 ```text
 10 characters, 2 pages, 70 SVG cells

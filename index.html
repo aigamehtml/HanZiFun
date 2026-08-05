@@ -55,7 +55,7 @@
             <span>练习文字</span>
             <textarea id="inputText" data-setting="inputText" rows="5" spellcheck="false"></textarea>
           </label>
-          <div class="check-grid grid grid-cols-2 gap-x-3">
+          <div class="check-grid content-options grid grid-cols-2 gap-x-3">
             <label class="check"><input id="dedupe" data-setting="dedupe" type="checkbox"> <span>自动去重</span></label>
             <label class="check"><input id="showPinyin" data-setting="showPinyin" type="checkbox"> <span>显示拼音</span></label>
           </div>
@@ -68,6 +68,7 @@
             <label><input data-setting="template" type="radio" name="template" value="mizi"> <span>米字描红</span></label>
             <label><input data-setting="template" type="radio" name="template" value="stroke"> <span>笔顺分解</span></label>
             <label><input data-setting="template" type="radio" name="template" value="blank"> <span>空白格纸</span></label>
+            <label><input data-setting="template" type="radio" name="template" value="copy"> <span>文章临摹</span></label>
           </div>
         </section>
 
@@ -146,10 +147,6 @@
               </select>
             </label>
           </div>
-          <label class="field standard-only flex flex-col gap-1.5">
-            <span class="range-label">每行练习格 <output id="practiceCountOutput"></output></span>
-            <input id="practiceCount" data-setting="practiceCount" type="range" min="3" max="11" step="1">
-          </label>
           <label class="field stroke-only gap-1.5">
             <span class="range-label">分步图数量 <output id="stepCountOutput"></output></span>
             <input id="stepCount" data-setting="stepCount" type="range" min="3" max="12" step="1">
@@ -215,7 +212,7 @@
           </div>
           <label class="zoom-control">
             <span>缩放</span>
-            <input id="zoom" data-setting="zoom" type="range" min="35" max="100" step="5">
+            <input id="zoom" data-setting="zoom" type="range" min="35" max="150" step="5">
             <output id="zoomOutput">70%</output>
           </label>
         </div>
