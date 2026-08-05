@@ -17,6 +17,7 @@ Use this directory as the project root for future work:
 - App logic: `app.js`
 - Bundled stroke data: `data/strokes.js`
 - Product requirements: `README.md`
+- Design philosophy and visual rules: `DESIGN.md`
 - Data attribution: `NOTICE.md`
 
 The demo currently supports 10 built-in characters:
@@ -119,3 +120,4 @@ For render sanity, verify that default input generates pages and SVG cells. The 
 - Last known MVP commit: `4d00344 Add offline handwriting demo`
 
 Keep changes scoped and commit intentionally. Do not remove bundled data attribution.
+Read `DESIGN.md` before making substantial UI changes.
