@@ -19,3 +19,9 @@ Basic pinyin data is generated at build time with `pinyin-pro`, distributed unde
 MIT License:
 
 - https://github.com/zh-lx/pinyin-pro
+
+ZIP creation and browser-side selective extraction use zip.js, distributed under the
+BSD 3-Clause License. A copy of its license is included with the vendored runtime:
+
+- https://github.com/gildas-lormeau/zip.js
+- `vendor/zip.LICENSE`

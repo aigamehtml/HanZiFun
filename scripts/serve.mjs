@@ -12,6 +12,7 @@ const types = {
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
   ".webmanifest": "application/manifest+json; charset=utf-8",
+  ".zip": "application/zip",
 };
 
 createServer(async (request, response) => {

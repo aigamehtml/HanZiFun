@@ -7,6 +7,7 @@ const APP_SHELL = [
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
+  "./vendor/zip.min.js",
   "./data/content-templates.js",
   "./data/strokes.js",
   "./data/stroke-index.js",

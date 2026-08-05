@@ -3,5 +3,10 @@
   "requested": 3500,
   "available": 3500,
   "missing": [],
-  "chunkSize": 50
+  "chunkSize": 50,
+  "archive": {
+    "file": "data/strokes-3500.zip",
+    "chunks": 70,
+    "bytes": 3937981
+  }
 }

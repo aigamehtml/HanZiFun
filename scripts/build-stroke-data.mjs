@@ -1,6 +1,7 @@
 import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { BlobWriter, TextReader, ZipWriter, configure } from "@zip.js/zip.js";
 import { pinyin } from "pinyin-pro";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -11,6 +12,9 @@ const commonListPath = path.join(dataDir, "common-3500.txt");
 const coreCharacters = Array.from("人口日月水火山田木永一二三上下大小中天地你我他好学春风雨");
 const chunkSize = 50;
 const coreOnly = process.argv.includes("--core-only");
+const archiveDate = new Date("2026-01-01T00:00:00.000Z");
+
+configure({ useWebWorkers: false });
 
 function toScriptValue(value) {
   return JSON.stringify(value).replaceAll("</script", "<\\/script");
@@ -51,6 +55,7 @@ async function buildFullData() {
   const index = {};
   const pinyinMap = {};
   const missing = [];
+  const zipWriter = new ZipWriter(new BlobWriter("application/zip"), { useWebWorkers: false });
   let written = 0;
 
   for (let offset = 0; offset < characters.length; offset += chunkSize) {
@@ -75,15 +80,28 @@ async function buildFullData() {
       "",
     ].join("\n");
     await writeFile(path.join(chunkDir, `chunk-${chunkId}.js`), script);
+    await zipWriter.add(`chunk-${chunkId}.json`, new TextReader(JSON.stringify(chunk)), {
+      level: 9,
+      lastModDate: archiveDate,
+      extendedTimestamp: false,
+      useWebWorkers: false,
+    });
   }
 
-  await writeFile(path.join(dataDir, "stroke-index.js"), `window.HANZI_CHUNK_INDEX=${toScriptValue(index)};\n`);
+  const archive = await zipWriter.close();
+  const archiveBuffer = Buffer.from(await archive.arrayBuffer());
+  const packInfo = { file: "data/strokes-3500.zip", chunks: Math.ceil(characters.length / chunkSize), bytes: archiveBuffer.length };
+  await writeFile(path.join(dataDir, "strokes-3500.zip"), archiveBuffer);
+  await writeFile(
+    path.join(dataDir, "stroke-index.js"),
+    `window.HANZI_CHUNK_INDEX=${toScriptValue(index)};window.HANZI_PACK_INFO=${toScriptValue(packInfo)};\n`
+  );
   await writeFile(path.join(dataDir, "pinyin.js"), `window.HANZI_PINYIN=${toScriptValue(pinyinMap)};\n`);
   await writeFile(
     path.join(dataDir, "data-manifest.json"),
-    `${JSON.stringify({ source: "hanzi-writer-data@2.0.1", requested: 3500, available: written, missing, chunkSize }, null, 2)}\n`
+    `${JSON.stringify({ source: "hanzi-writer-data@2.0.1", requested: 3500, available: written, missing, chunkSize, archive: packInfo }, null, 2)}\n`
   );
-  return { written, missing };
+  return { written, missing, archiveBytes: archiveBuffer.length };
 }
 
 await mkdir(dataDir, { recursive: true });
@@ -93,5 +111,6 @@ if (coreOnly) {
 } else {
   const result = await buildFullData();
   console.log(`Built ${coreCount} core characters and ${result.written} on-demand characters in chunks of ${chunkSize}.`);
+  console.log(`Built strokes-3500.zip (${(result.archiveBytes / 1024 / 1024).toFixed(2)}MB).`);
   if (result.missing.length) console.warn(`Missing source data: ${result.missing.join(" ")}`);
 }

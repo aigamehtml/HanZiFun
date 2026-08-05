@@ -18,6 +18,8 @@ Use this directory as the project root for future work:
 - Core bundled stroke data: `data/strokes.js`
 - On-demand stroke index: `data/stroke-index.js`
 - Generated stroke chunks: `data/characters/`
+- Production stroke archive: `data/strokes-3500.zip`
+- Vendored ZIP runtime: `vendor/zip.min.js`
 - Content presets: `data/content-templates.js`
 - Data/build scripts: `scripts/`
 - Production output: `dist/` (ignored by Git)
@@ -25,7 +27,7 @@ Use this directory as the project root for future work:
 - Design philosophy and visual rules: `DESIGN.md`
 - Data attribution: `NOTICE.md`
 
-The app preloads 28 core characters and supports all 3500 first-level common characters through 70 on-demand chunks.
+The app preloads 28 core characters and supports all 3500 first-level common characters through one ZIP containing 70 JSON entries. HTTP/PWA loads the ZIP and selectively extracts entries with zip.js; `file://` falls back to generated script chunks.
 
 Templates currently implemented:
 
@@ -53,7 +55,7 @@ Templates currently implemented:
 - Target users: both parents and teachers.
 - Target character coverage: 3500 common Chinese characters.
 - Do not bundle all 3500 characters into the main payload. A rough `hanzi-writer-data@2.0.1` estimate showed a 3500-character gzip sample around 3.95MB, above the 200KB direct-bundle threshold.
-- Preferred data strategy: keep a tiny built-in demo set, load character JSON on demand, cache loaded data locally, and support a full offline data folder/package.
+- Preferred data strategy: keep a tiny built-in set, fetch one 3.76MB ZIP on first extended-character use, selectively extract JSON entries with zip.js, keep a 16-chunk LRU in memory, and let the Service Worker cache the ZIP. Preserve script chunks for direct `file://` use, but exclude them from `dist/`.
 - Required formal templates: Tianzi grid tracing, Mizi grid tracing, stroke-order breakdown, and blank practice paper.
 - Blank practice paper does not require input text or stroke data. It should generate printable Tianzi or Mizi grid pages directly from layout settings.
 - Stroke order is for print, not animation-first. Prioritize static clarity: numbers, start dots, direction arrows, and step breakdowns.

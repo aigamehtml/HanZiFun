@@ -21,6 +21,8 @@ for (const file of [
   "data/strokes.js",
   "data/stroke-index.js",
   "data/pinyin.js",
+  "data/strokes-3500.zip",
+  "vendor/zip.min.js",
 ]) {
   fingerprint.update(await readFile(path.join(root, file)));
 }
@@ -55,7 +57,9 @@ await writeFile(path.join(output, "style.css"), css.code);
 await minifyJavaScript("app.js", "app.js");
 await minifyJavaScript("service-worker.js", "service-worker.js", { __BUILD_VERSION__: version });
 await cp(path.join(root, "data"), path.join(output, "data"), { recursive: true });
+await rm(path.join(output, "data", "characters"), { recursive: true, force: true });
 await cp(path.join(root, "icons"), path.join(output, "icons"), { recursive: true });
+await cp(path.join(root, "vendor"), path.join(output, "vendor"), { recursive: true });
 await cp(path.join(root, "manifest.webmanifest"), path.join(output, "manifest.webmanifest"));
 await cp(path.join(root, "NOTICE.md"), path.join(output, "NOTICE.md"));
 

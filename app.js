@@ -3,6 +3,8 @@ const SETTINGS_VERSION = 2;
 const CSS_PX_PER_MM = 96 / 25.4;
 const VIEWBOX_SIZE = 1024;
 const BASELINE = 900;
+const MAX_CACHED_CHUNKS = 16;
+const USE_ZIP_PACK = location.protocol !== "file:";
 
 const PAPER_SIZES = {
   A5: [148, 210],
@@ -81,6 +83,12 @@ let markerSequence = 0;
 let installPrompt = null;
 const pendingChunks = new Map();
 const failedChunks = new Set();
+const loadedChunks = new Map();
+const chunkCharacters = new Map();
+const coreCharacters = new Set(Object.keys(window.HANZI_STROKES || {}));
+let activeChunkIds = new Set();
+let zipArchivePromise = null;
+let zipArchiveState = "idle";
 
 function loadSettings() {
   try {
@@ -297,21 +305,109 @@ function unsupportedCharacters(characters) {
   return [...new Set(characters.filter((character) => !window.HANZI_STROKES?.[character] && !window.HANZI_CHUNK_INDEX?.[character]))];
 }
 
+function loadScript(source) {
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${source}"]`);
+    if (existing?.dataset.loaded === "true") {
+      resolve();
+      return;
+    }
+    const script = existing || document.createElement("script");
+    script.src = source;
+    script.onload = () => {
+      script.dataset.loaded = "true";
+      resolve();
+    };
+    script.onerror = reject;
+    if (!existing) document.head.append(script);
+  });
+}
+
+function charactersInChunk(chunkId) {
+  if (!chunkCharacters.has(chunkId)) {
+    chunkCharacters.set(
+      chunkId,
+      Object.entries(window.HANZI_CHUNK_INDEX || {})
+        .filter(([, id]) => id === chunkId)
+        .map(([character]) => character)
+    );
+  }
+  return chunkCharacters.get(chunkId);
+}
+
+function touchLoadedChunk(chunkId) {
+  if (!loadedChunks.has(chunkId)) return;
+  const characters = loadedChunks.get(chunkId);
+  loadedChunks.delete(chunkId);
+  loadedChunks.set(chunkId, characters);
+}
+
+function evictUnusedChunks() {
+  for (const [chunkId, characters] of loadedChunks) {
+    if (loadedChunks.size <= MAX_CACHED_CHUNKS || activeChunkIds.has(chunkId)) continue;
+    for (const character of characters) {
+      if (!coreCharacters.has(character)) delete window.HANZI_STROKES[character];
+    }
+    loadedChunks.delete(chunkId);
+  }
+}
+
+function registerChunk(chunkId, data) {
+  Object.assign(window.HANZI_STROKES, data);
+  loadedChunks.delete(chunkId);
+  loadedChunks.set(chunkId, Object.keys(data));
+  evictUnusedChunks();
+}
+
+async function openZipArchive() {
+  if (zipArchivePromise) return zipArchivePromise;
+  zipArchiveState = "loading";
+  scheduleRender(false);
+  zipArchivePromise = (async () => {
+    await loadScript("vendor/zip.min.js");
+    window.zip.configure({ useWebWorkers: false });
+    const response = await fetch(window.HANZI_PACK_INFO?.file || "data/strokes-3500.zip");
+    if (!response.ok) throw new Error(`Stroke ZIP request failed: ${response.status}`);
+    const reader = new window.zip.ZipReader(new window.zip.BlobReader(await response.blob()), { useWebWorkers: false });
+    const entries = new Map((await reader.getEntries()).map((entry) => [entry.filename, entry]));
+    zipArchiveState = "ready";
+    scheduleRender(false);
+    return { entries, reader };
+  })().catch((error) => {
+    zipArchiveState = "error";
+    scheduleRender(false);
+    throw error;
+  });
+  return zipArchivePromise;
+}
+
+async function loadChunkFromZip(chunkId) {
+  const archive = await openZipArchive();
+  const entry = archive.entries.get(`chunk-${chunkId}.json`);
+  if (!entry) throw new Error(`Stroke ZIP entry not found: ${chunkId}`);
+  const text = await entry.getData(new window.zip.TextWriter(), { useWebWorkers: false });
+  registerChunk(chunkId, JSON.parse(text));
+}
+
+async function loadChunkScript(chunkId) {
+  await loadScript(`data/characters/chunk-${chunkId}.js`);
+  const data = {};
+  for (const character of charactersInChunk(chunkId)) {
+    if (window.HANZI_STROKES[character]) data[character] = window.HANZI_STROKES[character];
+  }
+  registerChunk(chunkId, data);
+}
+
 function ensureCharacterData(characters) {
-  const chunkIds = [...new Set(characters
-    .filter((character) => !window.HANZI_STROKES?.[character])
-    .map((character) => window.HANZI_CHUNK_INDEX?.[character])
-    .filter(Boolean))];
+  const chunkIds = [...new Set(characters.map((character) => window.HANZI_CHUNK_INDEX?.[character]).filter(Boolean))];
+  activeChunkIds = new Set(chunkIds);
+  for (const chunkId of chunkIds) touchLoadedChunk(chunkId);
+  evictUnusedChunks();
 
   for (const chunkId of chunkIds) {
-    if (pendingChunks.has(chunkId) || failedChunks.has(chunkId)) continue;
-    const promise = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = `data/characters/chunk-${chunkId}.js`;
-      script.onload = resolve;
-      script.onerror = reject;
-      document.head.append(script);
-    }).then(() => {
+    const needsData = charactersInChunk(chunkId).some((character) => characters.includes(character) && !window.HANZI_STROKES?.[character]);
+    if (!needsData || pendingChunks.has(chunkId) || failedChunks.has(chunkId)) continue;
+    const promise = (USE_ZIP_PACK ? loadChunkFromZip(chunkId) : loadChunkScript(chunkId)).then(() => {
       pendingChunks.delete(chunkId);
       scheduleRender(false);
     }).catch(() => {
@@ -343,6 +439,8 @@ function render() {
   const printable = characters.filter((character) => !unsupported.includes(character));
   let result;
 
+  if (settings.template !== "blank") ensureCharacterData(printable);
+
   if (settings.template === "blank") result = renderBlankPages(dimensions);
   else if (settings.template === "stroke") result = renderStrokePages(printable, dimensions);
   else result = renderStandardPages(printable, dimensions);
@@ -359,15 +457,17 @@ function render() {
   if (result.practiceCount && result.practiceCount < settings.practiceCount) summary += ` · 每字 ${result.practiceCount} 个空白格`;
   els.summary.textContent = summary;
   els.contentStatus.textContent = unsupported.length ? `${unsupported.length} 个字暂无数据：${unsupported.join(" ")}` : `${characters.length} 个汉字`;
+  const archiveMegabytes = ((window.HANZI_PACK_INFO?.bytes || 0) / 1024 / 1024).toFixed(1);
   els.dataStatus.textContent = failedChunks.size
-    ? `${failedChunks.size} 个数据分片加载失败`
-    : loading ? `正在载入 ${loading} 个字` : navigator.onLine ? "笔顺数据已就绪" : "离线可用";
+    ? `${failedChunks.size} 个笔顺分片加载失败`
+    : zipArchiveState === "loading" ? `正在加载 ${archiveMegabytes}MB 笔顺字库`
+      : loading ? `正在解压 ${loading} 个字`
+        : zipArchiveState === "ready" ? `ZIP 字库已就绪 · 内存 ${loadedChunks.size} 分片`
+          : navigator.onLine ? "笔顺数据已就绪" : "离线可用";
   els.compactStatus.textContent = `${settings.paperSize} · ${settings.orientation === "portrait" ? "纵向" : "横向"} · ${TEMPLATE_LABELS[settings.template]}`;
   document.body.dataset.template = settings.template;
   updateHeaderFieldVisibility();
   updateOutputs();
-
-  if (settings.template !== "blank") ensureCharacterData(printable);
 }
 
 function scheduleRender(shouldSave = true) {
