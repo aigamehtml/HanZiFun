@@ -6,244 +6,586 @@
   "available": 9574,
   "missing": [],
   "chunkSize": 50,
-  "packCharacterSize": 250,
+  "packCharacterSize": 100,
   "archive": {
     "chunks": 192,
     "characters": 9574,
     "chunkSize": 50,
-    "packCharacterSize": 250,
+    "packCharacterSize": 100,
     "packs": [
       {
         "id": "000",
         "file": "data/strokes-pack-000.zip",
-        "chunks": 5,
-        "bytes": 135756
+        "chunks": 2,
+        "bytes": 45732
       },
       {
         "id": "001",
         "file": "data/strokes-pack-001.zip",
-        "chunks": 5,
-        "bytes": 185379
+        "chunks": 2,
+        "bytes": 57628
       },
       {
         "id": "002",
         "file": "data/strokes-pack-002.zip",
-        "chunks": 5,
-        "bytes": 210470
+        "chunks": 2,
+        "bytes": 66639
       },
       {
         "id": "003",
         "file": "data/strokes-pack-003.zip",
-        "chunks": 5,
-        "bytes": 224471
+        "chunks": 2,
+        "bytes": 74132
       },
       {
         "id": "004",
         "file": "data/strokes-pack-004.zip",
-        "chunks": 5,
-        "bytes": 240767
+        "chunks": 2,
+        "bytes": 77070
       },
       {
         "id": "005",
         "file": "data/strokes-pack-005.zip",
-        "chunks": 5,
-        "bytes": 259112
+        "chunks": 2,
+        "bytes": 79825
       },
       {
         "id": "006",
         "file": "data/strokes-pack-006.zip",
-        "chunks": 5,
-        "bytes": 264085
+        "chunks": 2,
+        "bytes": 87540
       },
       {
         "id": "007",
         "file": "data/strokes-pack-007.zip",
-        "chunks": 5,
-        "bytes": 290305
+        "chunks": 2,
+        "bytes": 86593
       },
       {
         "id": "008",
         "file": "data/strokes-pack-008.zip",
-        "chunks": 5,
-        "bytes": 296741
+        "chunks": 2,
+        "bytes": 84093
       },
       {
         "id": "009",
         "file": "data/strokes-pack-009.zip",
-        "chunks": 5,
-        "bytes": 310148
+        "chunks": 2,
+        "bytes": 96956
       },
       {
         "id": "010",
         "file": "data/strokes-pack-010.zip",
-        "chunks": 5,
-        "bytes": 334571
+        "chunks": 2,
+        "bytes": 96473
       },
       {
         "id": "011",
         "file": "data/strokes-pack-011.zip",
-        "chunks": 5,
-        "bytes": 356732
+        "chunks": 2,
+        "bytes": 97840
       },
       {
         "id": "012",
         "file": "data/strokes-pack-012.zip",
-        "chunks": 5,
-        "bytes": 384584
+        "chunks": 2,
+        "bytes": 93359
       },
       {
         "id": "013",
         "file": "data/strokes-pack-013.zip",
-        "chunks": 5,
-        "bytes": 445146
+        "chunks": 2,
+        "bytes": 107533
       },
       {
         "id": "014",
         "file": "data/strokes-pack-014.zip",
-        "chunks": 5,
-        "bytes": 263456
+        "chunks": 2,
+        "bytes": 104740
       },
       {
         "id": "015",
         "file": "data/strokes-pack-015.zip",
-        "chunks": 5,
-        "bytes": 259291
+        "chunks": 2,
+        "bytes": 106208
       },
       {
         "id": "016",
         "file": "data/strokes-pack-016.zip",
-        "chunks": 5,
-        "bytes": 336739
+        "chunks": 2,
+        "bytes": 102174
       },
       {
         "id": "017",
         "file": "data/strokes-pack-017.zip",
-        "chunks": 5,
-        "bytes": 335241
+        "chunks": 2,
+        "bytes": 113878
       },
       {
         "id": "018",
         "file": "data/strokes-pack-018.zip",
-        "chunks": 5,
-        "bytes": 313609
+        "chunks": 2,
+        "bytes": 115435
       },
       {
         "id": "019",
         "file": "data/strokes-pack-019.zip",
-        "chunks": 5,
-        "bytes": 338252
+        "chunks": 2,
+        "bytes": 116761
       },
       {
         "id": "020",
         "file": "data/strokes-pack-020.zip",
-        "chunks": 5,
-        "bytes": 351268
+        "chunks": 2,
+        "bytes": 112783
       },
       {
         "id": "021",
         "file": "data/strokes-pack-021.zip",
-        "chunks": 5,
-        "bytes": 376260
+        "chunks": 2,
+        "bytes": 121809
       },
       {
         "id": "022",
         "file": "data/strokes-pack-022.zip",
-        "chunks": 5,
-        "bytes": 290317
+        "chunks": 2,
+        "bytes": 124961
       },
       {
         "id": "023",
         "file": "data/strokes-pack-023.zip",
-        "chunks": 5,
-        "bytes": 358163
+        "chunks": 2,
+        "bytes": 123278
       },
       {
         "id": "024",
         "file": "data/strokes-pack-024.zip",
-        "chunks": 5,
-        "bytes": 351577
+        "chunks": 2,
+        "bytes": 124124
       },
       {
         "id": "025",
         "file": "data/strokes-pack-025.zip",
-        "chunks": 5,
-        "bytes": 352935
+        "chunks": 2,
+        "bytes": 133636
       },
       {
         "id": "026",
         "file": "data/strokes-pack-026.zip",
-        "chunks": 5,
-        "bytes": 372913
+        "chunks": 2,
+        "bytes": 134666
       },
       {
         "id": "027",
         "file": "data/strokes-pack-027.zip",
-        "chunks": 5,
-        "bytes": 358003
+        "chunks": 2,
+        "bytes": 132463
       },
       {
         "id": "028",
         "file": "data/strokes-pack-028.zip",
-        "chunks": 5,
-        "bytes": 311219
+        "chunks": 2,
+        "bytes": 144782
       },
       {
         "id": "029",
         "file": "data/strokes-pack-029.zip",
-        "chunks": 5,
-        "bytes": 388235
+        "chunks": 2,
+        "bytes": 145822
       },
       {
         "id": "030",
         "file": "data/strokes-pack-030.zip",
-        "chunks": 5,
-        "bytes": 393328
+        "chunks": 2,
+        "bytes": 148834
       },
       {
         "id": "031",
         "file": "data/strokes-pack-031.zip",
-        "chunks": 5,
-        "bytes": 372853
+        "chunks": 2,
+        "bytes": 154606
       },
       {
         "id": "032",
         "file": "data/strokes-pack-032.zip",
-        "chunks": 5,
-        "bytes": 388262
+        "chunks": 2,
+        "bytes": 160092
       },
       {
         "id": "033",
         "file": "data/strokes-pack-033.zip",
-        "chunks": 5,
-        "bytes": 377932
+        "chunks": 2,
+        "bytes": 170464
       },
       {
         "id": "034",
         "file": "data/strokes-pack-034.zip",
-        "chunks": 5,
-        "bytes": 371733
+        "chunks": 2,
+        "bytes": 195800
       },
       {
         "id": "035",
         "file": "data/strokes-pack-035.zip",
-        "chunks": 5,
-        "bytes": 378751
+        "chunks": 2,
+        "bytes": 81285
       },
       {
         "id": "036",
         "file": "data/strokes-pack-036.zip",
-        "chunks": 5,
-        "bytes": 445266
+        "chunks": 2,
+        "bytes": 103928
       },
       {
         "id": "037",
         "file": "data/strokes-pack-037.zip",
-        "chunks": 5,
-        "bytes": 451884
+        "chunks": 2,
+        "bytes": 125004
       },
       {
         "id": "038",
         "file": "data/strokes-pack-038.zip",
+        "chunks": 2,
+        "bytes": 113120
+      },
+      {
+        "id": "039",
+        "file": "data/strokes-pack-039.zip",
+        "chunks": 2,
+        "bytes": 99476
+      },
+      {
+        "id": "040",
+        "file": "data/strokes-pack-040.zip",
+        "chunks": 2,
+        "bytes": 134330
+      },
+      {
+        "id": "041",
+        "file": "data/strokes-pack-041.zip",
+        "chunks": 2,
+        "bytes": 150295
+      },
+      {
+        "id": "042",
+        "file": "data/strokes-pack-042.zip",
+        "chunks": 2,
+        "bytes": 124912
+      },
+      {
+        "id": "043",
+        "file": "data/strokes-pack-043.zip",
+        "chunks": 2,
+        "bytes": 122390
+      },
+      {
+        "id": "044",
+        "file": "data/strokes-pack-044.zip",
+        "chunks": 2,
+        "bytes": 140119
+      },
+      {
+        "id": "045",
+        "file": "data/strokes-pack-045.zip",
+        "chunks": 2,
+        "bytes": 131792
+      },
+      {
+        "id": "046",
+        "file": "data/strokes-pack-046.zip",
+        "chunks": 2,
+        "bytes": 133947
+      },
+      {
+        "id": "047",
+        "file": "data/strokes-pack-047.zip",
+        "chunks": 2,
+        "bytes": 103446
+      },
+      {
+        "id": "048",
+        "file": "data/strokes-pack-048.zip",
+        "chunks": 2,
+        "bytes": 153067
+      },
+      {
+        "id": "049",
+        "file": "data/strokes-pack-049.zip",
+        "chunks": 2,
+        "bytes": 129675
+      },
+      {
+        "id": "050",
+        "file": "data/strokes-pack-050.zip",
+        "chunks": 2,
+        "bytes": 173958
+      },
+      {
+        "id": "051",
+        "file": "data/strokes-pack-051.zip",
+        "chunks": 2,
+        "bytes": 124877
+      },
+      {
+        "id": "052",
+        "file": "data/strokes-pack-052.zip",
+        "chunks": 2,
+        "bytes": 117395
+      },
+      {
+        "id": "053",
+        "file": "data/strokes-pack-053.zip",
+        "chunks": 2,
+        "bytes": 160349
+      },
+      {
+        "id": "054",
+        "file": "data/strokes-pack-054.zip",
+        "chunks": 2,
+        "bytes": 151015
+      },
+      {
+        "id": "055",
+        "file": "data/strokes-pack-055.zip",
+        "chunks": 2,
+        "bytes": 89165
+      },
+      {
+        "id": "056",
+        "file": "data/strokes-pack-056.zip",
+        "chunks": 2,
+        "bytes": 125570
+      },
+      {
+        "id": "057",
+        "file": "data/strokes-pack-057.zip",
+        "chunks": 2,
+        "bytes": 168068
+      },
+      {
+        "id": "058",
+        "file": "data/strokes-pack-058.zip",
+        "chunks": 2,
+        "bytes": 136468
+      },
+      {
+        "id": "059",
+        "file": "data/strokes-pack-059.zip",
+        "chunks": 2,
+        "bytes": 129275
+      },
+      {
+        "id": "060",
+        "file": "data/strokes-pack-060.zip",
+        "chunks": 2,
+        "bytes": 142020
+      },
+      {
+        "id": "061",
+        "file": "data/strokes-pack-061.zip",
+        "chunks": 2,
+        "bytes": 124509
+      },
+      {
+        "id": "062",
+        "file": "data/strokes-pack-062.zip",
+        "chunks": 2,
+        "bytes": 150344
+      },
+      {
+        "id": "063",
+        "file": "data/strokes-pack-063.zip",
+        "chunks": 2,
+        "bytes": 145913
+      },
+      {
+        "id": "064",
+        "file": "data/strokes-pack-064.zip",
+        "chunks": 2,
+        "bytes": 141792
+      },
+      {
+        "id": "065",
+        "file": "data/strokes-pack-065.zip",
+        "chunks": 2,
+        "bytes": 146015
+      },
+      {
+        "id": "066",
+        "file": "data/strokes-pack-066.zip",
+        "chunks": 2,
+        "bytes": 143738
+      },
+      {
+        "id": "067",
+        "file": "data/strokes-pack-067.zip",
+        "chunks": 2,
+        "bytes": 165635
+      },
+      {
+        "id": "068",
+        "file": "data/strokes-pack-068.zip",
+        "chunks": 2,
+        "bytes": 145423
+      },
+      {
+        "id": "069",
+        "file": "data/strokes-pack-069.zip",
+        "chunks": 2,
+        "bytes": 130171
+      },
+      {
+        "id": "070",
+        "file": "data/strokes-pack-070.zip",
+        "chunks": 2,
+        "bytes": 153068
+      },
+      {
+        "id": "071",
+        "file": "data/strokes-pack-071.zip",
+        "chunks": 2,
+        "bytes": 99094
+      },
+      {
+        "id": "072",
+        "file": "data/strokes-pack-072.zip",
+        "chunks": 2,
+        "bytes": 128653
+      },
+      {
+        "id": "073",
+        "file": "data/strokes-pack-073.zip",
+        "chunks": 2,
+        "bytes": 172140
+      },
+      {
+        "id": "074",
+        "file": "data/strokes-pack-074.zip",
+        "chunks": 2,
+        "bytes": 146565
+      },
+      {
+        "id": "075",
+        "file": "data/strokes-pack-075.zip",
+        "chunks": 2,
+        "bytes": 176068
+      },
+      {
+        "id": "076",
+        "file": "data/strokes-pack-076.zip",
+        "chunks": 2,
+        "bytes": 155234
+      },
+      {
+        "id": "077",
+        "file": "data/strokes-pack-077.zip",
+        "chunks": 2,
+        "bytes": 141112
+      },
+      {
+        "id": "078",
+        "file": "data/strokes-pack-078.zip",
+        "chunks": 2,
+        "bytes": 142930
+      },
+      {
+        "id": "079",
+        "file": "data/strokes-pack-079.zip",
+        "chunks": 2,
+        "bytes": 150903
+      },
+      {
+        "id": "080",
+        "file": "data/strokes-pack-080.zip",
+        "chunks": 2,
+        "bytes": 154107
+      },
+      {
+        "id": "081",
+        "file": "data/strokes-pack-081.zip",
+        "chunks": 2,
+        "bytes": 171039
+      },
+      {
+        "id": "082",
+        "file": "data/strokes-pack-082.zip",
+        "chunks": 2,
+        "bytes": 127374
+      },
+      {
+        "id": "083",
+        "file": "data/strokes-pack-083.zip",
+        "chunks": 2,
+        "bytes": 156018
+      },
+      {
+        "id": "084",
+        "file": "data/strokes-pack-084.zip",
+        "chunks": 2,
+        "bytes": 157722
+      },
+      {
+        "id": "085",
+        "file": "data/strokes-pack-085.zip",
+        "chunks": 2,
+        "bytes": 149808
+      },
+      {
+        "id": "086",
+        "file": "data/strokes-pack-086.zip",
+        "chunks": 2,
+        "bytes": 149114
+      },
+      {
+        "id": "087",
+        "file": "data/strokes-pack-087.zip",
+        "chunks": 2,
+        "bytes": 125928
+      },
+      {
+        "id": "088",
+        "file": "data/strokes-pack-088.zip",
+        "chunks": 2,
+        "bytes": 164088
+      },
+      {
+        "id": "089",
+        "file": "data/strokes-pack-089.zip",
+        "chunks": 2,
+        "bytes": 161612
+      },
+      {
+        "id": "090",
+        "file": "data/strokes-pack-090.zip",
+        "chunks": 2,
+        "bytes": 168912
+      },
+      {
+        "id": "091",
+        "file": "data/strokes-pack-091.zip",
+        "chunks": 2,
+        "bytes": 179770
+      },
+      {
+        "id": "092",
+        "file": "data/strokes-pack-092.zip",
+        "chunks": 2,
+        "bytes": 185082
+      },
+      {
+        "id": "093",
+        "file": "data/strokes-pack-093.zip",
+        "chunks": 2,
+        "bytes": 188990
+      },
+      {
+        "id": "094",
+        "file": "data/strokes-pack-094.zip",
+        "chunks": 2,
+        "bytes": 174462
+      },
+      {
+        "id": "095",
+        "file": "data/strokes-pack-095.zip",
         "chunks": 2,
         "bytes": 135261
       }

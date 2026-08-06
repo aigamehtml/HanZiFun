@@ -46,3 +46,17 @@ distributed under the MIT License:
 - https://github.com/chinese-poetry/chinese-poetry
 - https://www.npmjs.com/package/chinese-poetry
 - `data/chinese-poetry.LICENSE`
+
+The embedded Kai (楷体) typeface is AR PL UKai CN (文鼎楷体, 简体正楷), distributed
+under the Arphic Public License. The font is subsetted at build time to all
+~9600 characters with stroke data plus punctuation/digits/Latin/pinyin, and
+further subsetted at PDF export time to only the characters used on the page:
+
+- https://www.freedesktop.org/wiki/Software/CJKUnifonts/
+- `vendor/kai.LICENSE`
+
+Runtime font subsetting uses the HarfBuzz `hb-subset` WASM build (harfbuzzjs),
+distributed under the MIT License:
+
+- https://github.com/harfbuzz/harfbuzzjs
+- `vendor/hb-subset.LICENSE`

@@ -22,3 +22,5 @@ const jsPdfSource = await readFile(jsPdfVendorPath, "utf8");
 await writeFile(jsPdfVendorPath, jsPdfSource.replace(/[ \t]+$/gm, ""));
 
 console.log("Built local fflate and jsPDF runtime assets plus dependency licenses.");
+
+await import("./build-font.mjs");

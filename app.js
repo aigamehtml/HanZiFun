@@ -14,6 +14,7 @@ const STEP_ITEM_HEIGHT_MM = 20;
 const STROKE_CARD_MIN_HEIGHT_MM = 48;
 const STROKE_CARD_FIXED_WIDTH_MM = 38;
 const STROKE_CARD_PADDING_MM = 4;
+const KAI_FONT_FACE = "KaiTi";
 
 const PAPER_SIZES = {
   A5: [148, 210],
@@ -565,6 +566,108 @@ function loadScript(source) {
   return promise;
 }
 
+// --- 内嵌楷体字体运行时：hb-subset 按需裁剪 + jsPDF 嵌入 ---
+// 解决页眉等排版文本用 helvetica 无中文导致的乱码。
+const kaiRuntime = { wasm: null, font: null, chars: null };
+let kaiCharSet = null;
+
+async function loadHbSubsetWasm() {
+  if (kaiRuntime.wasm) return kaiRuntime.wasm;
+  const res = await fetch("vendor/hb-subset.wasm");
+  if (!res.ok) throw new Error("hb-subset.wasm 载入失败");
+  const { instance } = await WebAssembly.instantiate(await res.arrayBuffer());
+  kaiRuntime.wasm = instance.exports;
+  return kaiRuntime.wasm;
+}
+
+async function loadKaiFontBuffer() {
+  if (kaiRuntime.font) return kaiRuntime.font;
+  const res = await fetch("vendor/fonts/kai.ttf");
+  if (!res.ok) throw new Error("kai.ttf 载入失败");
+  kaiRuntime.font = new Uint8Array(await res.arrayBuffer());
+  return kaiRuntime.font;
+}
+
+async function loadKaiCharSet() {
+  if (kaiRuntime.chars) return kaiRuntime.chars;
+  const res = await fetch("vendor/fonts/kai-chars.json");
+  if (!res.ok) throw new Error("kai-chars.json 载入失败");
+  kaiRuntime.chars = new Set(JSON.parse(await res.text()));
+  return kaiRuntime.chars;
+}
+
+// 用 hb-subset.wasm 把字体裁剪到 text 实际用字，返回子集字体 Uint8Array。
+// 移植自 subset-font（去掉 Node fs/Buffer/fontverter），纯浏览器 WebAssembly。
+function subsetFontKai(H, fontU8, text) {
+  const heapu8 = new Uint8Array(H.memory.buffer);
+  const input = H.hb_subset_input_create_or_fail();
+  if (!input) throw new Error("hb_subset_input_create_or_fail");
+  const fontBuffer = H.malloc(fontU8.byteLength);
+  heapu8.set(fontU8, fontBuffer);
+  const blob = H.hb_blob_create(fontBuffer, fontU8.byteLength, 2, 0, 0);
+  const face = H.hb_face_create(blob, 0);
+  H.hb_blob_destroy(blob);
+  const layoutFeatures = H.hb_subset_input_set(input, 6);
+  H.hb_set_clear(layoutFeatures);
+  H.hb_set_invert(layoutFeatures);
+  const inputUnicodes = H.hb_subset_input_unicode_set(input);
+  for (const ch of text) H.hb_set_add(inputUnicodes, ch.codePointAt(0));
+  const subset = H.hb_subset_or_fail(face, input);
+  H.hb_subset_input_destroy(input);
+  if (!subset) {
+    H.hb_face_destroy(face);
+    H.free(fontBuffer);
+    throw new Error("hb_subset_or_fail");
+  }
+  const result = H.hb_face_reference_blob(subset);
+  const offset = H.hb_blob_get_data(result, 0);
+  const len = H.hb_blob_get_length(result);
+  const copy = new Uint8Array(heapu8.subarray(offset, offset + len));
+  H.hb_blob_destroy(result);
+  H.hb_face_destroy(subset);
+  H.hb_face_destroy(face);
+  H.free(fontBuffer);
+  return copy;
+}
+
+function uint8ToBase64(u8) {
+  let binary = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < u8.length; i += chunk) {
+    binary += String.fromCharCode(...u8.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+// 收集页面所有文本字符（含 SVG 笔画编号），用于子集化。
+function collectPdfTextChars(pages) {
+  const chars = new Set();
+  for (const page of pages) {
+    const walker = document.createTreeWalker(page, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      const parent = node.parentElement;
+      if (!parent) continue;
+      const computed = getComputedStyle(parent);
+      if (computed.display === "none" || computed.visibility === "hidden" || Number(computed.opacity) === 0) continue;
+      for (const ch of node.data) {
+        if (!/\s/u.test(ch)) chars.add(ch);
+      }
+    }
+  }
+  return chars;
+}
+
+// 载入楷体运行时，按页面实际用字子集化后嵌入 pdf；字符集存入 kaiCharSet 供渲染期 fallback。
+async function prepareKaiFont(pdf, pages) {
+  const [H, fontU8, charSet] = await Promise.all([loadHbSubsetWasm(), loadKaiFontBuffer(), loadKaiCharSet()]);
+  const chars = collectPdfTextChars(pages);
+  const subset = subsetFontKai(H, fontU8, [...chars].join(""));
+  pdf.addFileToVFS("kai.ttf", uint8ToBase64(subset));
+  pdf.addFont("kai.ttf", KAI_FONT_FACE, "normal");
+  kaiCharSet = charSet;
+}
+
 function packForChunk(chunkId) {
   const packInfo = window.HANZI_PACK_INFO || {};
   if (!Array.isArray(packInfo.packs)) {
@@ -731,12 +834,19 @@ function prefetchUnusedStrokePacks() {
 
 function prefetchPdfRuntime() {
   if (document.head.querySelector('link[rel="prefetch"][href="vendor/jspdf.umd.min.js"]')) return;
-  const link = document.createElement("link");
-  link.rel = "prefetch";
-  link.as = "script";
-  link.href = "vendor/jspdf.umd.min.js";
-  link.fetchPriority = "low";
-  document.head.append(link);
+  for (const [href, as] of [
+    ["vendor/jspdf.umd.min.js", "script"],
+    ["vendor/hb-subset.wasm", "fetch"],
+    ["vendor/fonts/kai.ttf", "fetch"],
+    ["vendor/fonts/kai-chars.json", "fetch"],
+  ]) {
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = as;
+    link.href = href;
+    link.fetchPriority = "low";
+    document.head.append(link);
+  }
 }
 
 function scheduleStrokePackPrefetch(delay = 0) {
@@ -1199,7 +1309,7 @@ function drawSvgElement(pdf, element, parentMatrix, box) {
     const computed = getComputedStyle(element);
     const anchor = point(element.getAttribute("x"), element.getAttribute("y"));
     setPdfColor(pdf, "setTextColor", computed.stroke === "none" ? computed.fill : computed.stroke, Number(computed.opacity) || 1);
-    pdf.setFont("helvetica", "bold");
+    pdf.setFont(KAI_FONT_FACE, "normal");
     pdf.setFontSize(parseFloat(computed.fontSize) * box.width / VIEWBOX_SIZE * 72 / 25.4);
     pdf.text(element.textContent, anchor.x, anchor.y, { align: computed.textAnchor === "middle" ? "center" : "left", baseline: "middle" });
   }
@@ -1352,8 +1462,7 @@ function drawPdfText(pdf, character, box, computed) {
   const marks = Array.from(decomposed).filter((part) => /\p{Mark}/u.test(part));
   const baseline = box.y + (box.height - fontSize) / 2 + fontSize * 0.8;
   setPdfColor(pdf, "setTextColor", computed.color, computed.opacity);
-  const bold = computed.fontWeight === "bold" || Number(computed.fontWeight) >= 600;
-  pdf.setFont("helvetica", `${bold ? "bold" : ""}${computed.fontStyle === "italic" ? "italic" : ""}` || "normal");
+  pdf.setFont(KAI_FONT_FACE, "normal");
   pdf.setFontSize(parseFloat(computed.fontSize) * 0.75);
   pdf.text(base, box.x, baseline);
   for (const mark of marks) drawToneMark(pdf, mark, box, computed.color, Math.max(0.12, fontSize * 0.07));
@@ -1379,7 +1488,9 @@ function drawHtmlText(pdf, page, metrics) {
           const box = relativeRect(rect, metrics);
           const fontSize = parseFloat(computed.fontSize) / CSS_PX_PER_MM;
           const glyphBox = { x: box.x, y: box.y + (box.height - fontSize) / 2, width: box.width, height: fontSize };
-          if (!/[\u3400-\u9fff]/u.test(character) || !drawHanziForm(pdf, character, glyphBox, computed.color, computed.opacity)) {
+          if (/[\u3400-\u9fff]/u.test(character) && kaiCharSet && !kaiCharSet.has(character) && drawHanziForm(pdf, character, glyphBox, computed.color, computed.opacity)) {
+            // \u751f\u50fb\u5b57\uff08\u8d85\u51fa\u5185\u5d4c\u6977\u4f53\u8986\u76d6\uff09\u4e14\u6709\u7b14\u987a\u6570\u636e\uff1a\u7528\u7b14\u987a\u8f6e\u5ed3 fallback\uff0c\u907f\u514d\u7f3a\u5b57\u7a7a\u767d
+          } else {
             drawPdfText(pdf, character, box, computed);
           }
         }
@@ -1406,6 +1517,7 @@ async function buildPdfDocument() {
     compress: true,
   });
   const pages = [...els.pages.querySelectorAll(".page")];
+  await prepareKaiFont(pdf, pages);
 
   gridFormCache.clear();
   glyphFormCache.clear();
