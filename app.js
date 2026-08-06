@@ -176,6 +176,10 @@ function extractCharacters(text, dedupe) {
   return dedupe ? [...new Set(chars)] : chars;
 }
 
+function extractPageCharacters() {
+  return extractCharacters(els.pages.textContent || "", true);
+}
+
 function extractCopyItems(text) {
   return Array.from(text).filter((character) => !/\s/u.test(character));
 }
@@ -934,6 +938,14 @@ async function preparePdfPages() {
   if (document.fonts?.ready) await document.fonts.ready;
   render();
   await nextPaint();
+  const pageCharacters = extractPageCharacters();
+  const supportedPageCharacters = pageCharacters.filter((character) => !unsupportedCharacters([character]).length);
+  if (supportedPageCharacters.some((character) => !window.HANZI_STROKES?.[character])) {
+    reportPdfProgress("准备页眉文字…");
+    await ensureCharacterData(supportedPageCharacters);
+    render();
+    await nextPaint();
+  }
   reportPdfProgress("完成页面排版…");
   const missing = printable.filter((character) => !window.HANZI_STROKES?.[character]);
   if (missing.length && settings.template !== "copy") throw new Error(`笔顺数据载入失败：${missing.join(" ")}`);
