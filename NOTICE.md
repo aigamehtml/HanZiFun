@@ -39,3 +39,10 @@ of its license is included with the vendored runtime:
 
 - https://github.com/parallax/jsPDF
 - `vendor/jspdf.LICENSE`
+
+Built-in classic text templates are generated from the `chinese-poetry` data set,
+distributed under the MIT License:
+
+- https://github.com/chinese-poetry/chinese-poetry
+- https://www.npmjs.com/package/chinese-poetry
+- `data/chinese-poetry.LICENSE`

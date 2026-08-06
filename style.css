@@ -13,6 +13,7 @@
   --warm: #d9480f;
   --stroke-active: #202b33;
   --stroke-done: #b7c0c7;
+  --trace-color: #d8dde1;
   --preview-scale: 0.7;
 }
 
@@ -825,11 +826,11 @@ svg .grid-diagonal-line {
 
 svg .stroke,
 svg .trace {
-  fill: var(--stroke-active);
+  fill: var(--trace-color, #d8dde1);
 }
 
 svg .done {
-  fill: var(--stroke-done);
+  fill: var(--trace-color, #d8dde1);
 }
 
 svg .start-dot {
@@ -866,6 +867,10 @@ svg .copy-glyph {
   font-weight: 400;
   dominant-baseline: central;
   text-anchor: middle;
+}
+
+svg .trace-glyph {
+  fill: var(--trace-color, #d8dde1);
 }
 
 .pending-cell {

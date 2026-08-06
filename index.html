@@ -200,8 +200,12 @@
             </div>
           </div>
           <label class="field standard-only flex flex-col gap-1.5">
-            <span class="range-label">描红深浅 <output id="traceOpacityOutput"></output></span>
-            <input id="traceOpacity" data-setting="traceOpacity" type="range" min="0.08" max="0.45" step="0.01">
+            <span>描红颜色</span>
+            <input id="traceColor" data-setting="traceColor" type="color">
+          </label>
+          <label class="field standard-only flex flex-col gap-1.5">
+            <span class="range-label">描红透明度 <output id="traceOpacityOutput"></output></span>
+            <input id="traceOpacity" data-setting="traceOpacity" type="range" min="0.1" max="1" step="0.01">
           </label>
           <div class="check-grid stroke-options grid grid-cols-2 gap-x-3">
             <label class="check standard-only"><input id="showRowGuide" data-setting="showRowGuide" type="checkbox"> <span>格外引导字</span></label>

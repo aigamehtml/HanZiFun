@@ -1,5 +1,5 @@
 const SETTINGS_KEY = "hanzifun.settings";
-const SETTINGS_VERSION = 7;
+const SETTINGS_VERSION = 8;
 const APP_TITLE = "汉字 Fun";
 const CSS_PX_PER_MM = 96 / 25.4;
 const VIEWBOX_SIZE = 1024;
@@ -49,7 +49,8 @@ const DEFAULT_SETTINGS = {
   showArrows: true,
   showGuides: true,
   traceMode: "full",
-  traceOpacity: 0.2,
+  traceColor: "#d8dde1",
+  traceOpacity: 1,
   gridFrameColor: "#aebac2",
   gridCrossColor: "#c9d2d8",
   gridDiagonalColor: "#d8c6c6",
@@ -139,6 +140,10 @@ function loadSettings() {
         migrated.gridDiagonalColor ??= migrated.gridColor;
       }
       delete migrated.gridColor;
+      if (Number(stored.settingsVersion) < 8 && !migrated.traceColor) {
+        migrated.traceColor = DEFAULT_SETTINGS.traceColor;
+        migrated.traceOpacity = DEFAULT_SETTINGS.traceOpacity;
+      }
       return { ...DEFAULT_SETTINGS, ...migrated, settingsVersion: SETTINGS_VERSION };
     }
   } catch {
@@ -242,7 +247,8 @@ function renderStrokePaths(data, options) {
     if (mode === "step" && index < step) className = "done";
     if (options.trace) className = "trace";
     const opacity = options.trace ? settings.traceOpacity : 1;
-    return `<path class="${className}" d="${path}" opacity="${opacity}"></path>`;
+    const colorStyle = options.trace ? ` style="--trace-color:${settingColor("traceColor")}"` : "";
+    return `<path class="${className}" d="${path}" opacity="${opacity}"${colorStyle}></path>`;
   }).join("");
 }
 
@@ -273,7 +279,8 @@ function makeCharacterSvg(character, options = {}) {
   }
   if (!data) {
     const opacity = options.trace ? settings.traceOpacity : 1;
-    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="fallback-glyph" x="512" y="512" opacity="${opacity}">${escapeHtml(character)}</text></svg>`;
+    const colorStyle = options.trace ? ` style="--trace-color:${settingColor("traceColor")}"` : "";
+    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="fallback-glyph trace-glyph" x="512" y="512" opacity="${opacity}"${colorStyle}>${escapeHtml(character)}</text></svg>`;
   }
   const paths = renderStrokePaths(data, options);
   const annotations = options.annotate ? renderAnnotations(data) : "";
@@ -285,7 +292,7 @@ function makeCopyCell(character, options = {}) {
     return makeCharacterSvg(character, { ...options, trace: true, gridStyle: gridStyle() });
   }
   const grid = makeGrid(gridStyle(), options);
-  return `<svg class="hanzi-cell copy-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 临摹格">${grid}<text class="copy-glyph" x="512" y="512" opacity="${settings.traceOpacity}">${escapeHtml(character)}</text></svg>`;
+  return `<svg class="hanzi-cell copy-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 临摹格">${grid}<text class="copy-glyph trace-glyph" x="512" y="512" opacity="${settings.traceOpacity}" style="--trace-color:${settingColor("traceColor")}">${escapeHtml(character)}</text></svg>`;
 }
 
 function pinyinFor(character) {
@@ -395,7 +402,7 @@ function footerFields(pageIndex, pageCount) {
 
 function makePage(body, pageIndex, pageCount, dimensions, extraClass = "") {
   return `<div class="page-shell" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm">
-    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-frame-color:${settingColor("gridFrameColor")};--grid-cross-color:${settingColor("gridCrossColor")};--grid-diagonal-color:${settingColor("gridDiagonalColor")}">
+    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-frame-color:${settingColor("gridFrameColor")};--grid-cross-color:${settingColor("gridCrossColor")};--grid-diagonal-color:${settingColor("gridDiagonalColor")};--trace-color:${settingColor("traceColor")}">
       ${headerFields()}${body}${footerFields(pageIndex, pageCount)}
     </section>
   </div>`;
