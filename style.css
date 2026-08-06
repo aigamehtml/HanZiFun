@@ -824,13 +824,16 @@ svg .grid-diagonal-line {
   stroke: var(--grid-diagonal-color, #d8c6c6);
 }
 
-svg .stroke,
+svg .stroke {
+  fill: var(--stroke-active);
+}
+
 svg .trace {
   fill: var(--trace-color, #d8dde1);
 }
 
 svg .done {
-  fill: var(--trace-color, #d8dde1);
+  fill: var(--stroke-done);
 }
 
 svg .start-dot {
