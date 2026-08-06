@@ -11,6 +11,8 @@ const packageVersion = JSON.parse(await readFile(path.join(root, "package.json")
 const fingerprint = createHash("sha256");
 for (const file of [
   "index.html",
+  "robots.txt",
+  "sitemap.xml",
   "tailwind.css",
   "style.css",
   "app.js",
@@ -66,6 +68,8 @@ await rm(path.join(output, "data", "characters"), { recursive: true, force: true
 await cp(path.join(root, "icons"), path.join(output, "icons"), { recursive: true });
 await cp(path.join(root, "vendor"), path.join(output, "vendor"), { recursive: true });
 await cp(path.join(root, "manifest.webmanifest"), path.join(output, "manifest.webmanifest"));
+await cp(path.join(root, "robots.txt"), path.join(output, "robots.txt"));
+await cp(path.join(root, "sitemap.xml"), path.join(output, "sitemap.xml"));
 await cp(path.join(root, "NOTICE.md"), path.join(output, "NOTICE.md"));
 
 async function directorySize(directory) {
