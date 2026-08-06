@@ -41,11 +41,11 @@ node test_form_xobj.mjs
 
 ### 单文件应用核心
 
-所有运行时逻辑集中在 `app.js`（约 1677 行，单文件、顶层 IIFE 风格）。`index.html` 是入口，左侧设置面板 + 右侧纸张预览。`style.css` 负责领域样式（纸张、格子、SVG、打印），Tailwind 仅用于 UI 布局工具类。
+所有运行时逻辑集中在 `app.js`（单文件、顶层 IIFE 风格，无模块化）。`index.html` 是入口，左侧设置面板 + 右侧纸张预览。`style.css` 负责领域样式（纸张、格子、SVG、打印），Tailwind 仅用于 UI 布局工具类。
 
 `app.js` 的逻辑分区（按文件顺序）：
 
-1. **常量与默认设置**（1–125）：`SETTINGS_VERSION`、`CSS_PX_PER_MM = 96/25.4`、`VIEWBOX_SIZE = 1024`、`DEFAULT_SETTINGS`、`PAPER_SIZES`。`USE_ZIP_PACK` 由 `location.protocol !== "file:"` 决定，控制笔顺数据走 ZIP 还是脚本回退。
+1. **常量与默认设置**：`SETTINGS_VERSION`、`CSS_PX_PER_MM = 96/25.4`、`VIEWBOX_SIZE = 1024`、`DEFAULT_SETTINGS`、`PAPER_SIZES`。`USE_ZIP_PACK` 由 `location.protocol !== "file:"` 决定，控制笔顺数据走 ZIP 还是脚本回退。
 2. **设置持久化**（`loadSettings`/`saveSettings`）：`localStorage`，带 `settingsVersion` 做版本迁移。
 3. **SVG 渲染原语**（`makeGrid`/`renderStrokePaths`/`renderAnnotations`/`makeCharacterSvg`）：生成格子、笔画、编号、起笔点、箭头的 SVG。
 4. **页面渲染器**（`renderStandardPages`/`renderStrokePages`/`renderBlankPages`/`renderCopyPages`）：四种模板各自分页排版，返回 `{ markup, pageCount, ... }`。
@@ -73,13 +73,13 @@ node test_form_xobj.mjs
 
 核心 28 字集合定义在 `scripts/build-stroke-data.mjs` 顶部的 `coreCharacters`，改预载字需同步此处并重跑 `npm run data:core`。
 
-### PDF 导出（当前活跃改动方向）
+### PDF 导出
 
-当前分支 `feat/pdf-xobject-reuse` 正在优化 PDF 体积。关键约束与机制：
+PDF 导出是纯客户端矢量生成，是本仓库最复杂的子系统。关键约束与机制：
 
 - **纯矢量**：用本地 `vendor/jspdf.umd.min.js` 的原生路径/直线/文本原语生成 PDF。**禁止**整页 Canvas/JPEG/PNG 栅格化，禁止 html2canvas，禁止上传内容。导出的 PDF 不应包含整页 `/Image` 对象。
 - **SVG→PDF 转换**：`parseSvgPath` 支持 `M/L/H/V/Q/C/Z`，二次贝塞尔（`Q`）转三次（`C`）并缓存。`drawSvgElement` 递归处理 SVG 子元素，用 `elementMatrix`/`mapSvgPoint` 做 CTM 变换。
-- **Form XObject 复用**：`ensureGridForm` 把格子框线建成一个 Form 对象，每个单元格 `doFormObject("grid", m)` 引用；`ensureProgressiveForm` 把「字@步」的累加笔画也建成 Form 缓存（`progressiveFormCache`），`ensureGlyphForm` 缓存完整字形轮廓。这是当前分支降低多页 PDF 体积的主要手段——改动 PDF 导出时务必保持 Form 复用，避免回退为每格重画路径。
+- **Form XObject 复用**：`ensureGridForm` 把格子框线建成一个 Form 对象，每个单元格 `doFormObject("grid", m)` 引用；`ensureProgressiveForm` 把「字@步」的累加笔画也建成 Form 缓存（`progressiveFormCache`），`ensureGlyphForm` 缓存完整字形轮廓。这是控制多页 PDF 体积的关键——改动 PDF 导出时务必保持 Form 复用，避免回退为每格重画路径。
 - **双入口**：`exportPdf`（右上角「导出 PDF」，直接下载本地 PDF）与 `printWorksheet`（浏览器打印对话框）是两个独立操作。移动端 `printWorksheet` 走 jsPDF 生成 → Web Share API 分享/打印降级链路。
 - **排版一致性**：PDF 每页物理尺寸、方向、分页必须与实时预览一致。`preparePdfPages` 会先确保预览 DOM 就绪并等待笔顺数据与字体加载完成。
 

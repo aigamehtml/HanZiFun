@@ -4,6 +4,8 @@ const APP_TITLE = "汉字 Fun";
 const CSS_PX_PER_MM = 96 / 25.4;
 const VIEWBOX_SIZE = 1024;
 const BASELINE = 900;
+const STROKE_ACTIVE_COLOR = "#202b33";
+const STROKE_DONE_COLOR = "#b7c0c7";
 const MAX_CACHED_CHUNKS = 16;
 const USE_ZIP_PACK = location.protocol !== "file:";
 const STEP_CELL_MM = 16;
@@ -289,7 +291,10 @@ function makeCharacterSvg(character, options = {}) {
   }
   const paths = renderStrokePaths(data, options);
   const annotations = options.annotate ? renderAnnotations(data) : "";
-  return `<svg class="hanzi-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 字练习格">${grid}<g transform="translate(0 ${BASELINE}) scale(1 -1)">${paths}</g>${annotations}</svg>`;
+  const dataAttrs = [`data-ch="${escapeHtml(character)}"`];
+  if (options.trace) dataAttrs.push('data-trace="1"');
+  if (options.mode === "step") dataAttrs.push(`data-step="${options.step ?? data.strokes.length - 1}"`);
+  return `<svg class="hanzi-cell" ${dataAttrs.join(" ")} viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 字练习格">${grid}<g transform="translate(0 ${BASELINE}) scale(1 -1)">${paths}</g>${annotations}</svg>`;
 }
 
 function makeCopyCell(character, options = {}) {
@@ -972,7 +977,9 @@ function relativeRect(rect, metrics) {
 }
 
 function cssColor(value, opacity = 1) {
-  const match = String(value).match(/[\d.]+/g);
+  const str = String(value);
+  const hex = str.match(/^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
+  const match = hex ? [parseInt(hex[1], 16), parseInt(hex[2], 16), parseInt(hex[3], 16)] : str.match(/[\d.]+/g);
   if (!match || value === "none" || value === "transparent") return null;
   const channels = match.slice(0, 3).map(Number);
   const alpha = clamp(opacity * (match[3] === undefined ? 1 : Number(match[3])), 0, 1);
@@ -1193,23 +1200,128 @@ function drawSvgElement(pdf, element, parentMatrix, box) {
   }
 }
 
-function drawPageSvgs(pdf, page, metrics) {
-  for (const source of page.querySelectorAll("svg.hanzi-cell")) {
-    const box = relativeRect(source.getBoundingClientRect(), metrics);
-    if (!box.width || !box.height) continue;
-    for (const child of source.children) drawSvgElement(pdf, child, identityMatrix(), box);
+// Form XObject caches: each unique grid / glyph / progressive step is defined
+// once in unit viewBox space (0..VIEWBOX_SIZE) and reused per cell via Do,
+// so repeated characters and grids no longer duplicate path data per cell.
+const gridFormCache = new Map();
+const glyphFormCache = new Map();
+const stepFormCache = new Map();
+const UNIT_BOX = { x: 0, y: 0, width: VIEWBOX_SIZE, height: VIEWBOX_SIZE };
+const FLIP_MATRIX = { a: 1, b: 0, c: 0, d: -1, e: 0, f: BASELINE };
+
+function gridFormKey(source) {
+  const frame = source.querySelector(".grid-frame-line");
+  const joinLeft = frame && frame.tagName.toLowerCase() === "path";
+  return `${gridStyle()}@${joinLeft ? 1 : 0}@${settings.showGuides ? 1 : 0}`;
+}
+
+function ensureGridForm(pdf, source) {
+  const key = gridFormKey(source);
+  if (gridFormCache.has(key)) return key;
+  const edge = 8;
+  const far = VIEWBOX_SIZE - edge;
+  const mid = VIEWBOX_SIZE / 2;
+  const closed = !(source.querySelector(".grid-frame-line")?.tagName.toLowerCase() === "path");
+  pdf.beginFormObject(0, 0, VIEWBOX_SIZE, VIEWBOX_SIZE, pdf.Matrix(1, 0, 0, 1, 0, 0));
+  pdf.setLineCap("square");
+  pdf.setLineJoin("miter");
+  setPdfColor(pdf, "setDrawColor", settingColor("gridFrameColor"));
+  pdf.setLineWidth(9);
+  pdf.setLineDashPattern([], 0);
+  const frameOps = [{ op: "m", c: [edge, edge] }, { op: "l", c: [far, edge] }, { op: "l", c: [far, far] }, { op: "l", c: [edge, far] }];
+  if (closed) frameOps.push({ op: "h", c: [] });
+  drawPdfPath(pdf, frameOps, "S");
+  if (settings.showGuides) {
+    pdf.setLineWidth(6);
+    pdf.setLineDashPattern([25, 22], 0);
+    setPdfColor(pdf, "setDrawColor", settingColor("gridCrossColor"));
+    drawPdfPath(pdf, [{ op: "m", c: [mid, edge] }, { op: "l", c: [mid, far] }], "S");
+    drawPdfPath(pdf, [{ op: "m", c: [edge, mid] }, { op: "l", c: [far, mid] }], "S");
+    if (gridStyle() === "mi") {
+      setPdfColor(pdf, "setDrawColor", settingColor("gridDiagonalColor"));
+      drawPdfPath(pdf, [{ op: "m", c: [edge, edge] }, { op: "l", c: [far, far] }], "S");
+      drawPdfPath(pdf, [{ op: "m", c: [far, edge] }, { op: "l", c: [edge, far] }], "S");
+    }
+  }
+  pdf.endFormObject(key);
+  gridFormCache.set(key, true);
+  return key;
+}
+
+function ensureGlyphForm(pdf, character) {
+  if (glyphFormCache.has(character)) return true;
+  const data = window.HANZI_STROKES?.[character];
+  if (!data) return false;
+  pdf.beginFormObject(0, 0, VIEWBOX_SIZE, VIEWBOX_SIZE, pdf.Matrix(1, 0, 0, 1, 0, 0));
+  for (const pathData of data.strokes) drawPdfPath(pdf, pdfPath(pathData, FLIP_MATRIX, UNIT_BOX), "F");
+  pdf.endFormObject(character);
+  glyphFormCache.set(character, true);
+  return true;
+}
+
+// Progressive step form: strokes 0..step. In trace mode the form is
+// color-agnostic (caller sets the trace color). In step mode the done/current
+// distinction is baked in so the current stroke stays highlighted.
+function ensureStepForm(pdf, character, step, trace) {
+  const key = `${character}@${step}@${trace ? 1 : 0}`;
+  if (stepFormCache.has(key)) return true;
+  const data = window.HANZI_STROKES?.[character];
+  if (!data) return false;
+  pdf.beginFormObject(0, 0, VIEWBOX_SIZE, VIEWBOX_SIZE, pdf.Matrix(1, 0, 0, 1, 0, 0));
+  for (let index = 0; index <= step && index < data.strokes.length; index++) {
+    if (!trace) setPdfColor(pdf, "setFillColor", index < step ? STROKE_DONE_COLOR : STROKE_ACTIVE_COLOR);
+    drawPdfPath(pdf, pdfPath(data.strokes[index], FLIP_MATRIX, UNIT_BOX), "F");
+  }
+  pdf.endFormObject(key);
+  stepFormCache.set(key, true);
+  return true;
+}
+
+function drawCellGlyph(pdf, source, square) {
+  const character = source.dataset.ch;
+  const trace = source.dataset.trace === "1";
+  const step = source.dataset.step;
+  const scale = square.width / VIEWBOX_SIZE;
+  const matrix = pdf.Matrix(scale, 0, 0, scale, square.x, square.y);
+  if (step !== undefined) {
+    if (trace) setPdfColor(pdf, "setFillColor", settingColor("traceColor"), settings.traceOpacity);
+    if (!ensureStepForm(pdf, character, Number(step), trace)) return;
+    pdf.doFormObject(`${character}@${step}@${trace ? 1 : 0}`, matrix);
+  } else {
+    setPdfColor(pdf, "setFillColor", trace ? settingColor("traceColor") : STROKE_ACTIVE_COLOR, trace ? settings.traceOpacity : 1);
+    if (!ensureGlyphForm(pdf, character)) return;
+    pdf.doFormObject(character, matrix);
   }
 }
 
-function drawHanziOutline(pdf, character, box, color, opacity = 1) {
+function drawHanziForm(pdf, character, box, color, opacity = 1) {
   const data = window.HANZI_STROKES?.[character];
   if (!data) return false;
   const size = Math.min(box.width, box.height);
   const square = { x: box.x + (box.width - size) / 2, y: box.y + (box.height - size) / 2, width: size, height: size };
   setPdfColor(pdf, "setFillColor", color, opacity);
-  const matrix = { a: 1, b: 0, c: 0, d: -1, e: 0, f: BASELINE };
-  for (const pathData of data.strokes) drawPdfPath(pdf, pdfPath(pathData, matrix, square), "F");
+  if (!ensureGlyphForm(pdf, character)) return false;
+  pdf.doFormObject(character, pdf.Matrix(size / VIEWBOX_SIZE, 0, 0, size / VIEWBOX_SIZE, square.x, square.y));
   return true;
+}
+
+function drawPageSvgs(pdf, page, metrics) {
+  for (const source of page.querySelectorAll("svg.hanzi-cell")) {
+    const box = relativeRect(source.getBoundingClientRect(), metrics);
+    if (!box.width || !box.height) continue;
+    const size = Math.min(box.width, box.height);
+    const square = { x: box.x + (box.width - size) / 2, y: box.y + (box.height - size) / 2, width: size, height: size };
+    const matrix = pdf.Matrix(size / VIEWBOX_SIZE, 0, 0, size / VIEWBOX_SIZE, square.x, square.y);
+    pdf.doFormObject(ensureGridForm(pdf, source), matrix);
+    if (source.dataset.ch) drawCellGlyph(pdf, source, square);
+    // Annotations (start dots, arrows, stroke numbers) stay inline: they only
+    // appear on model/step cells, so their duplication is bounded.
+    for (const child of source.children) {
+      const tag = child.tagName.toLowerCase();
+      if (tag === "g" || child.classList.contains("grid-frame-line") || child.classList.contains("grid-cross-line") || child.classList.contains("grid-diagonal-line")) continue;
+      drawSvgElement(pdf, child, identityMatrix(), box);
+    }
+  }
 }
 
 function drawToneMark(pdf, mark, box, color, width) {
@@ -1262,7 +1374,7 @@ function drawHtmlText(pdf, page, metrics) {
           const box = relativeRect(rect, metrics);
           const fontSize = parseFloat(computed.fontSize) / CSS_PX_PER_MM;
           const glyphBox = { x: box.x, y: box.y + (box.height - fontSize) / 2, width: box.width, height: fontSize };
-          if (!/[\u3400-\u9fff]/u.test(character) || !drawHanziOutline(pdf, character, glyphBox, computed.color, computed.opacity)) {
+          if (!/[\u3400-\u9fff]/u.test(character) || !drawHanziForm(pdf, character, glyphBox, computed.color, computed.opacity)) {
             drawPdfText(pdf, character, box, computed);
           }
         }
@@ -1290,18 +1402,35 @@ async function buildPdfDocument() {
   });
   const pages = [...els.pages.querySelectorAll(".page")];
 
-  for (const [index, page] of pages.entries()) {
-    reportPdfProgress(`生成第 ${index + 1} / ${pages.length} 页…`);
-    await nextPaint();
-    if (index > 0) pdf.addPage([dimensions.width, dimensions.height], orientation);
-    pdf.setFillColor(255, 255, 255);
-    pdf.rect(0, 0, dimensions.width, dimensions.height, "F");
-    const metrics = pageMetrics(page, dimensions);
-    drawHtmlBorders(pdf, page, metrics);
-    drawPageSvgs(pdf, page, metrics);
-    drawHtmlText(pdf, page, metrics);
-    await new Promise((resolve) => requestAnimationFrame(resolve));
-  }
+  gridFormCache.clear();
+  glyphFormCache.clear();
+  stepFormCache.clear();
+  const sf = pdf.internal.scaleFactor;
+  const pageMatrix = pdf.Matrix(sf, 0, 0, -sf, 0, dimensions.height * sf);
+  pdf.advancedAPI(() => {
+    // advancedAPI emits the mm->pt CTM (q + scale matrix) once, on page 1.
+    // addPage() inside advanced mode does NOT re-emit it, so every page from
+    // page 2 on would render in raw PDF points (~2.8x smaller, flipped Y).
+    // Re-establish the CTM per page and balance q/Q: pages 1..N-1 close their
+    // own q with restoreGraphicsState; the final page's q is closed by the
+    // restoreGraphicsState that advancedAPI emits when exiting.
+    for (const [index, page] of pages.entries()) {
+      reportPdfProgress(`生成第 ${index + 1} / ${pages.length} 页…`);
+      if (index > 0) {
+        pdf.addPage([dimensions.width, dimensions.height], orientation);
+        pdf.saveGraphicsState();
+        pdf.internal.write(pageMatrix.toString() + " cm");
+      }
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, dimensions.width, dimensions.height, "F");
+      const metrics = pageMetrics(page, dimensions);
+      drawHtmlBorders(pdf, page, metrics);
+      drawPageSvgs(pdf, page, metrics);
+      drawHtmlText(pdf, page, metrics);
+      if (index < pages.length - 1) pdf.restoreGraphicsState();
+    }
+    return undefined;
+  });
 
   return { pdf, pageCount: pages.length };
 }
