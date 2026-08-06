@@ -943,7 +943,7 @@ svg .copy-glyph {
   color: #8f2f12;
 }
 
-.export-button[aria-busy="true"] {
+.app-actions .button[aria-busy="true"] {
   cursor: wait;
   opacity: 0.78;
 }

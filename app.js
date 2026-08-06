@@ -115,6 +115,9 @@ const zipArchivePromises = new Map();
 const zipArchiveStates = new Map();
 let exportStatusTimer = 0;
 let strokePrefetchScheduled = false;
+let pdfOperationActive = false;
+let activePdfProgress = null;
+let preparedMobilePdf = null;
 
 function loadSettings() {
   try {
@@ -591,14 +594,14 @@ async function openZipArchive(pack) {
   zipArchiveStates.set(pack.id, "loading");
   scheduleRender(false);
   const promise = (async () => {
-    if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = "载入解压组件…";
+    reportPdfProgress("载入解压组件…");
     await loadScript("vendor/fflate.min.js");
-    if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = "下载笔顺字库…";
+    reportPdfProgress("下载笔顺字库…");
     const response = await fetch(pack.file);
     if (!response.ok) throw new Error(`Stroke ZIP request failed: ${response.status}`);
-    if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = "解析笔顺字库…";
+    reportPdfProgress("解析笔顺字库…");
     const bytes = new Uint8Array(await response.arrayBuffer());
-    if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = "读取笔顺数据…";
+    reportPdfProgress("读取笔顺数据…");
     zipArchiveStates.set(pack.id, "ready");
     scheduleRender(false);
     return { bytes };
@@ -615,7 +618,7 @@ async function loadChunkFromZip(chunkId) {
   const pack = packForChunk(chunkId);
   const archive = await openZipArchive(pack);
   const filename = `chunk-${chunkId}.json`;
-  if (els.exportPdfBtn.getAttribute("aria-busy") === "true") els.exportPdfBtn.textContent = `解压笔顺分片 ${chunkId}…`;
+  reportPdfProgress(`解压笔顺分片 ${chunkId}…`);
   const entries = window.fflate.unzipSync(archive.bytes, {
     filter: (entry) => entry.name === filename,
   });
@@ -770,7 +773,7 @@ function render() {
   els.dataStatus.setAttribute("aria-busy", dataState === "loading" ? "true" : "false");
   els.summary.dataset.state = dataState;
   els.pages.setAttribute("aria-busy", dataState === "loading" ? "true" : "false");
-  els.printBtn.disabled = dataState !== "ready";
+  els.printBtn.disabled = dataState !== "ready" || pdfOperationActive;
   const compactSuffix = dataState === "loading" ? " · 笔顺加载中…" : dataState === "error" ? " · 笔顺加载失败" : "";
   els.compactStatus.textContent = `${settings.paperSize} · ${settings.orientation === "portrait" ? "纵向" : "横向"} · ${GRID_STYLE_LABELS[gridStyle()]} · ${TEMPLATE_LABELS[settings.template]}${compactSuffix}`;
   document.title = dataState === "loading"
@@ -782,7 +785,10 @@ function render() {
 }
 
 function scheduleRender(shouldSave = true) {
-  if (shouldSave) saveSettings();
+  if (shouldSave) {
+    preparedMobilePdf = null;
+    saveSettings();
+  }
   cancelAnimationFrame(renderFrame);
   renderFrame = requestAnimationFrame(render);
 }
@@ -847,6 +853,29 @@ function showExportStatus(message, isError = false) {
   exportStatusTimer = setTimeout(() => { els.exportStatus.hidden = true; }, 5000);
 }
 
+function reportPdfProgress(message) {
+  activePdfProgress?.(message);
+}
+
+function beginPdfOperation(button) {
+  if (pdfOperationActive || button.disabled) return null;
+  const originalLabel = button.textContent;
+  pdfOperationActive = true;
+  els.exportPdfBtn.disabled = true;
+  els.printBtn.disabled = true;
+  button.setAttribute("aria-busy", "true");
+  activePdfProgress = (message) => { button.textContent = message; };
+  reportPdfProgress("生成中…");
+  return () => {
+    activePdfProgress = null;
+    pdfOperationActive = false;
+    button.removeAttribute("aria-busy");
+    button.textContent = originalLabel;
+    els.exportPdfBtn.disabled = false;
+    els.printBtn.disabled = els.dataStatus.dataset.state !== "ready";
+  };
+}
+
 function exportFilename() {
   const fallback = TEMPLATE_LABELS[settings.template] || "汉字练习";
   const title = String(settings.title || fallback).trim().replace(/[\\/:*?"<>|]/g, "-").slice(0, 48) || fallback;
@@ -863,16 +892,16 @@ async function preparePdfPages() {
     : extractCharacters(settings.inputText, settings.template === "copy" ? false : settings.dedupe);
   const unsupported = unsupportedCharacters(inputCharacters);
   const printable = inputCharacters.filter((character) => !unsupported.includes(character));
-  els.exportPdfBtn.textContent = "准备练习字…";
+  reportPdfProgress("准备练习字…");
   await ensureCharacterData(printable);
   if (document.fonts?.ready) await document.fonts.ready;
   render();
   await nextPaint();
 
   const pageCharacters = extractCharacters([...els.pages.querySelectorAll(".page")].map((page) => page.textContent).join(""), true);
-  els.exportPdfBtn.textContent = `准备页面文字（${pageCharacters.length} 字）…`;
+  reportPdfProgress(`准备页面文字（${pageCharacters.length} 字）…`);
   await ensureCharacterData(pageCharacters.filter((character) => window.HANZI_CHUNK_INDEX?.[character]));
-  els.exportPdfBtn.textContent = "完成页面排版…";
+  reportPdfProgress("完成页面排版…");
   const missing = printable.filter((character) => !window.HANZI_STROKES?.[character]);
   if (missing.length && settings.template !== "copy") throw new Error(`笔顺数据载入失败：${missing.join(" ")}`);
   render();
@@ -1187,53 +1216,166 @@ function drawHtmlText(pdf, page, metrics) {
   range.detach();
 }
 
-async function exportPdf() {
-  if (els.exportPdfBtn.disabled) return;
-  const originalLabel = els.exportPdfBtn.textContent;
-  els.exportPdfBtn.disabled = true;
-  els.exportPdfBtn.setAttribute("aria-busy", "true");
-  els.exportPdfBtn.textContent = "生成中…";
-  try {
-    await preparePdfPages();
-    els.exportPdfBtn.textContent = "载入 PDF 组件…";
+async function buildPdfDocument() {
+  await preparePdfPages();
+  reportPdfProgress("载入 PDF 组件…");
+  await nextPaint();
+  await loadScript("vendor/jspdf.umd.min.js");
+  if (!window.jspdf?.jsPDF) throw new Error("PDF 组件载入失败");
+
+  const dimensions = paperDimensions();
+  const orientation = dimensions.width > dimensions.height ? "landscape" : "portrait";
+  const pdf = new window.jspdf.jsPDF({
+    orientation,
+    unit: "mm",
+    format: [dimensions.width, dimensions.height],
+    compress: true,
+  });
+  const pages = [...els.pages.querySelectorAll(".page")];
+
+  for (const [index, page] of pages.entries()) {
+    reportPdfProgress(`生成第 ${index + 1} / ${pages.length} 页…`);
     await nextPaint();
-    await loadScript("vendor/jspdf.umd.min.js");
-    if (!window.jspdf?.jsPDF) throw new Error("PDF 组件载入失败");
+    if (index > 0) pdf.addPage([dimensions.width, dimensions.height], orientation);
+    pdf.setFillColor(255, 255, 255);
+    pdf.rect(0, 0, dimensions.width, dimensions.height, "F");
+    const metrics = pageMetrics(page, dimensions);
+    drawHtmlBorders(pdf, page, metrics);
+    drawPageSvgs(pdf, page, metrics);
+    drawHtmlText(pdf, page, metrics);
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+  }
 
-    const dimensions = paperDimensions();
-    const orientation = dimensions.width > dimensions.height ? "landscape" : "portrait";
-    const pdf = new window.jspdf.jsPDF({
-      orientation,
-      unit: "mm",
-      format: [dimensions.width, dimensions.height],
-      compress: true,
-    });
-    const pages = [...els.pages.querySelectorAll(".page")];
+  return { pdf, pageCount: pages.length };
+}
 
-    for (const [index, page] of pages.entries()) {
-      els.exportPdfBtn.textContent = `生成第 ${index + 1} / ${pages.length} 页…`;
-      await nextPaint();
-      if (index > 0) pdf.addPage([dimensions.width, dimensions.height], orientation);
-      pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 0, dimensions.width, dimensions.height, "F");
-      const metrics = pageMetrics(page, dimensions);
-      drawHtmlBorders(pdf, page, metrics);
-      drawPageSvgs(pdf, page, metrics);
-      drawHtmlText(pdf, page, metrics);
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-    }
-
-    els.exportPdfBtn.textContent = "保存 PDF…";
+async function exportPdf() {
+  const finish = beginPdfOperation(els.exportPdfBtn);
+  if (!finish) return;
+  try {
+    const { pdf, pageCount } = await buildPdfDocument();
+    reportPdfProgress("保存 PDF…");
     await nextPaint();
     pdf.save(exportFilename());
-    showExportStatus(`已生成 ${pages.length} 页 PDF`);
+    showExportStatus(`已生成 ${pageCount} 页 PDF`);
   } catch (error) {
     console.error(error);
     showExportStatus(error?.message || "PDF 导出失败，请重试", true);
   } finally {
-    els.exportPdfBtn.disabled = false;
-    els.exportPdfBtn.removeAttribute("aria-busy");
-    els.exportPdfBtn.textContent = originalLabel;
+    finish();
+  }
+}
+
+function isMobilePrintContext() {
+  const userAgent = navigator.userAgent || "";
+  const appleTouchDevice = /iPhone|iPad|iPod/u.test(userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  return window.matchMedia("(display-mode: standalone)").matches
+    || navigator.standalone === true
+    || /Android/u.test(userAgent)
+    || appleTouchDevice
+    || window.innerWidth <= 600
+    || (window.matchMedia("(hover: none) and (pointer: coarse)").matches && window.innerWidth <= 1024);
+}
+
+function canSharePdfFile(file) {
+  if (typeof navigator.share !== "function" || typeof navigator.canShare !== "function") return false;
+  try {
+    return navigator.canShare({ files: [file] });
+  } catch {
+    return false;
+  }
+}
+
+function reservePdfPreviewWindow() {
+  const previewWindow = window.open("", "_blank");
+  if (!previewWindow) return null;
+  previewWindow.document.title = "汉字 Fun - 正在生成 PDF";
+  previewWindow.document.body.textContent = "正在生成可打印 PDF…";
+  previewWindow.document.body.style.cssText = "margin:0;min-height:100vh;display:grid;place-items:center;font:16px system-ui;color:#41515c;background:#f6f8f9";
+  return previewWindow;
+}
+
+function openPdfPreview(blob, previewWindow) {
+  const url = URL.createObjectURL(blob);
+  if (previewWindow && !previewWindow.closed) {
+    previewWindow.location.replace(url);
+  } else {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = exportFilename();
+    link.click();
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+}
+
+async function sharePdfForPrinting(file) {
+  await navigator.share({
+    title: APP_TITLE,
+    text: "汉字练习本 PDF",
+    files: [file],
+  });
+}
+
+async function printWorksheet() {
+  if (!isMobilePrintContext()) {
+    els.printNote.textContent = "打印时请选择与预览一致的纸张，并使用“实际大小 / 100%”，关闭浏览器页眉页脚。";
+    els.printNote.hidden = false;
+    setTimeout(() => { els.printNote.hidden = true; }, 5000);
+    window.print();
+    return;
+  }
+
+  if (preparedMobilePdf && canSharePdfFile(preparedMobilePdf)) {
+    try {
+      await sharePdfForPrinting(preparedMobilePdf);
+      showExportStatus("已打开系统分享，请选择“打印”");
+    } catch (error) {
+      if (error?.name !== "AbortError") showExportStatus("无法打开系统分享，请使用“导出 PDF”", true);
+    }
+    return;
+  }
+
+  const probeFile = new File([""], "hanzifun.pdf", { type: "application/pdf" });
+  const shareSupported = canSharePdfFile(probeFile);
+  const previewWindow = shareSupported ? null : reservePdfPreviewWindow();
+  const finish = beginPdfOperation(els.printBtn);
+  if (!finish) {
+    previewWindow?.close();
+    return;
+  }
+
+  try {
+    const { pdf, pageCount } = await buildPdfDocument();
+    reportPdfProgress("准备打印…");
+    const blob = pdf.output("blob");
+    const file = new File([blob], exportFilename(), { type: "application/pdf" });
+    preparedMobilePdf = file;
+
+    if (!shareSupported) {
+      openPdfPreview(blob, previewWindow);
+      showExportStatus(`已打开 ${pageCount} 页 PDF，请从系统菜单选择打印`);
+      return;
+    }
+
+    try {
+      await sharePdfForPrinting(file);
+      showExportStatus("已打开系统分享，请选择“打印”");
+    } catch (error) {
+      if (error?.name === "NotAllowedError") {
+        showExportStatus("PDF 已准备好，请再点一次“打印”打开系统分享");
+      } else if (error?.name !== "AbortError") {
+        console.error(error);
+        openPdfPreview(blob, null);
+        showExportStatus("系统分享不可用，PDF 已保存到本机", true);
+      }
+    }
+  } catch (error) {
+    previewWindow?.close();
+    console.error(error);
+    showExportStatus(error?.message || "打印 PDF 生成失败，请重试", true);
+  } finally {
+    finish();
   }
 }
 
@@ -1325,11 +1467,7 @@ function init() {
     scheduleRender();
   });
   els.exportPdfBtn.addEventListener("click", exportPdf);
-  els.printBtn.addEventListener("click", () => {
-    els.printNote.hidden = false;
-    setTimeout(() => { els.printNote.hidden = true; }, 5000);
-    window.print();
-  });
+  els.printBtn.addEventListener("click", printWorksheet);
   els.previewWrap.addEventListener("wheel", (event) => {
     if ((!event.metaKey && !event.ctrlKey) || event.deltaY === 0) return;
     event.preventDefault();
