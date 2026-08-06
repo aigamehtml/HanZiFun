@@ -280,7 +280,8 @@ function makeCharacterSvg(character, options = {}) {
   if (!data) {
     const opacity = options.trace ? settings.traceOpacity : 1;
     const colorStyle = options.trace ? ` style="--trace-color:${settingColor("traceColor")}"` : "";
-    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="fallback-glyph trace-glyph" x="512" y="512" opacity="${opacity}"${colorStyle}>${escapeHtml(character)}</text></svg>`;
+    const glyphClass = options.trace ? "fallback-glyph trace-glyph" : "fallback-glyph";
+    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="${glyphClass}" x="512" y="512" opacity="${opacity}"${colorStyle}>${escapeHtml(character)}</text></svg>`;
   }
   const paths = renderStrokePaths(data, options);
   const annotations = options.annotate ? renderAnnotations(data) : "";
