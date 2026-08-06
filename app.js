@@ -122,6 +122,7 @@ let strokePrefetchCursor = 0;
 let pdfOperationActive = false;
 let activePdfProgress = null;
 let preparedMobilePdf = null;
+let pdfProtectedCharacters = [];
 
 function loadSettings() {
   try {
@@ -764,7 +765,8 @@ function render() {
   const characters = extractCharacters(settings.inputText, settings.template === "copy" ? false : settings.dedupe);
   const unsupported = unsupportedCharacters(characters);
   const printable = characters.filter((character) => !unsupported.includes(character));
-  if (settings.template !== "blank") ensureCharacterData(printable);
+  const dataCharacters = [...new Set([...printable, ...pdfProtectedCharacters])];
+  if (settings.template !== "blank" || pdfProtectedCharacters.length) ensureCharacterData(dataCharacters);
 
   const loaded = printable.filter((character) => window.HANZI_STROKES?.[character]).length;
   const loading = printable.length - loaded;
@@ -908,6 +910,7 @@ function beginPdfOperation(button) {
   activePdfProgress = (message) => { button.textContent = message; };
   reportPdfProgress("生成中…");
   return () => {
+    pdfProtectedCharacters = [];
     activePdfProgress = null;
     pdfOperationActive = false;
     button.removeAttribute("aria-busy");
@@ -940,9 +943,11 @@ async function preparePdfPages() {
   await nextPaint();
   const pageCharacters = extractPageCharacters();
   const supportedPageCharacters = pageCharacters.filter((character) => !unsupportedCharacters([character]).length);
-  if (supportedPageCharacters.some((character) => !window.HANZI_STROKES?.[character])) {
+  pdfProtectedCharacters = supportedPageCharacters;
+  const pdfCharacters = [...new Set([...printable, ...supportedPageCharacters])];
+  if (pdfCharacters.some((character) => !window.HANZI_STROKES?.[character])) {
     reportPdfProgress("准备页眉文字…");
-    await ensureCharacterData(supportedPageCharacters);
+    await ensureCharacterData(pdfCharacters);
     render();
     await nextPaint();
   }
