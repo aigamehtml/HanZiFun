@@ -6,7 +6,7 @@
 
 - 纯 HTML/CSS/JavaScript 运行时，无 CDN 和远程接口
 - Tailwind CSS v4 通过官方 CLI 在构建期生成按需工具类，运行时零依赖
-- 上游全量 9574 个单码点字符笔顺数据，按 1000 字拆成多个 ZIP 并按条目解压
+- 上游全量 9574 个单码点字符笔顺数据，按 250 字拆成多个小 ZIP 并按条目解压
 - 首屏预载 28 个基础字，HTML/CSS/JS 和首屏索引保持轻量
 - 支持描红练习、笔顺分解、空白格纸、文章临摹 4 种模板，所有模板可切换田字格或米字格
 - 支持 A5 / A4 / A3 / Letter、纵向 / 横向和毫米级页面预览
@@ -51,7 +51,7 @@ npm run build
 - 生成 192px / 512px PWA 图标
 - 从 `hanzi-writer-data@2.0.1` 提取全部单码点字符数据，并保留《通用规范汉字表》一级字表 3500 字在排序前段
 - 仅保留 `strokes` 与 `medians` 字段
-- 每 50 字生成一个 JSON 条目，并按 1000 字写入一个 `data/strokes-pack-NNN.zip`
+- 每 50 字生成一个 JSON 条目，并按 250 字写入一个 `data/strokes-pack-NNN.zip`
 - 保留 `data/characters/chunk-NNN.js` 作为双击 HTML 时的兼容回退
 - 生成字符到分片的索引和基础拼音表
 - 使用 zip.js 构建 ZIP，浏览器端本地化 fflate 运行时按条目解压，不依赖 CDN
@@ -76,7 +76,7 @@ npm run data:core
 npm run build:quick
 ```
 
-当前生产构建以实际构建输出为准，其中 `strokes-pack-NNN.zip` 是主要体积来源；压缩后的应用壳约 73KB，fflate 运行时约 32KB 并在需要扩展字时加载。核心 28 字不触发 ZIP 下载，首次使用其他字时只下载命中的 ZIP 包，之后只解压所需条目。
+当前生产构建以实际构建输出为准，其中 `strokes-pack-NNN.zip` 是主要体积来源；压缩后的应用壳约 73KB，fflate 运行时约 32KB 并在需要扩展字时加载。核心 28 字不触发 ZIP 下载，首次使用其他字时只下载命中的小 ZIP 包，之后只解压所需条目。
 
 ## 1. 产品目标
 
@@ -798,11 +798,11 @@ npm 压缩包：约 12.8MB
 加载策略：
 
 - 主包只内置 28 个基础字，保证首次打开快
-- GitHub Pages 放置多个 `data/strokes-pack-NNN.zip`，默认每 1000 字一个包
+- GitHub Pages 放置多个 `data/strokes-pack-NNN.zip`，默认每 250 字一个小包
 - 首次使用非核心字时只加载命中字所在的 ZIP Blob，fflate 只解压所需的 JSON 条目
 - ZIP 下载和条目解压期间，浏览器标题、预览摘要及纸张区域必须显示明确的“笔顺加载中”状态
 - 笔顺数据就绪前，格内文字使用浏览器可用的楷体字体栈作为占位，并匹配最终 SVG 字形的字号、基线和描红透明度
-- 首屏稳定 15 秒后使用 HTML5 `prefetch` 提示预取尚未使用的 ZIP 包；排除当前页面涉及的包，当前有笔顺请求时延后，省流量或低速网络下跳过
+- 首屏稳定 15 秒后使用 HTML5 `prefetch` 分批提示预取尚未使用的 ZIP 包；排除当前页面涉及的包，当前有笔顺请求时延后，省流量或低速网络下跳过
 - 内存使用 LRU 管理，保留最近 16 个非当前分片；当前内容所需分片不会被清理
 - Service Worker 在每个 ZIP 包首次加载后缓存该包，供后续离线使用
 - 双击 `index.html` 时由于 `file://` 读取 Blob 受限，回退到 `data/characters/*.js`

@@ -117,6 +117,7 @@ const zipArchivePromises = new Map();
 const zipArchiveStates = new Map();
 let exportStatusTimer = 0;
 let strokePrefetchScheduled = false;
+let strokePrefetchCursor = 0;
 let pdfOperationActive = false;
 let activePdfProgress = null;
 let preparedMobilePdf = null;
@@ -687,7 +688,11 @@ function prefetchUnusedStrokePacks() {
   }
 
   const activePackIds = new Set(activeZipPacks().map((pack) => pack.id));
-  for (const pack of window.HANZI_PACK_INFO?.packs || []) {
+  const packs = window.HANZI_PACK_INFO?.packs || [];
+  const batchSize = 4;
+  let advertised = 0;
+  for (let count = 0; count < packs.length && advertised < batchSize; count += 1) {
+    const pack = packs[(strokePrefetchCursor + count) % packs.length];
     if (activePackIds.has(pack.id)) continue;
     if (!pack?.file || zipArchivePromises.has(pack.id)) continue;
     if (document.head.querySelector(`link[rel="prefetch"][href="${pack.file}"]`)) continue;
@@ -698,7 +703,22 @@ function prefetchUnusedStrokePacks() {
     link.href = pack.file;
     link.fetchPriority = "low";
     document.head.append(link);
+    advertised += 1;
   }
+  strokePrefetchCursor = (strokePrefetchCursor + Math.max(batchSize, advertised)) % Math.max(1, packs.length);
+  if (packs.some((pack) => !activePackIds.has(pack.id) && !zipArchivePromises.has(pack.id) && !document.head.querySelector(`link[rel="prefetch"][href="${pack.file}"]`))) {
+    scheduleStrokePackPrefetch(4500);
+  }
+}
+
+function prefetchPdfRuntime() {
+  if (document.head.querySelector('link[rel="prefetch"][href="vendor/jspdf.umd.min.js"]')) return;
+  const link = document.createElement("link");
+  link.rel = "prefetch";
+  link.as = "script";
+  link.href = "vendor/jspdf.umd.min.js";
+  link.fetchPriority = "low";
+  document.head.append(link);
 }
 
 function scheduleStrokePackPrefetch(delay = 0) {
@@ -906,10 +926,6 @@ async function preparePdfPages() {
   if (document.fonts?.ready) await document.fonts.ready;
   render();
   await nextPaint();
-
-  const pageCharacters = extractCharacters([...els.pages.querySelectorAll(".page")].map((page) => page.textContent).join(""), true);
-  reportPdfProgress(`准备页面文字（${pageCharacters.length} 字）…`);
-  await ensureCharacterData(pageCharacters.filter((character) => window.HANZI_CHUNK_INDEX?.[character]));
   reportPdfProgress("完成页面排版…");
   const missing = printable.filter((character) => !window.HANZI_STROKES?.[character]);
   if (missing.length && settings.template !== "copy") throw new Error(`笔顺数据载入失败：${missing.join(" ")}`);
@@ -1505,6 +1521,12 @@ function init() {
   });
   window.addEventListener("offline", () => scheduleRender(false));
   window.addEventListener("load", () => scheduleStrokePackPrefetch(15000));
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      if (navigator.onLine && !connection?.saveData && !/(^|-)2g$/.test(connection?.effectiveType || "")) prefetchPdfRuntime();
+    }, 8000);
+  });
   registerPwa();
   render();
 }

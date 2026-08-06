@@ -29,7 +29,7 @@ Use this directory as the project root for future work:
 - Design philosophy and visual rules: `DESIGN.md`
 - Data attribution: `NOTICE.md`
 
-The app preloads 28 core characters and supports all 9574 single-codepoint upstream characters through multiple ZIP packs. Each JSON chunk contains 50 characters; each ZIP pack contains up to 1000 characters. The first 3500 come from the first-level common-character table; the remaining characters are upstream single-codepoint data sorted by Unicode code point. HTTP/PWA loads only the pack containing the needed chunk and selectively extracts entries with fflate; `file://` falls back to generated script chunks.
+The app preloads 28 core characters and supports all 9574 single-codepoint upstream characters through multiple ZIP packs. Each JSON chunk contains 50 characters; each ZIP pack contains up to 250 characters. The first 3500 come from the first-level common-character table; the remaining characters are upstream single-codepoint data sorted by Unicode code point. HTTP/PWA loads only the pack containing the needed chunk and selectively extracts entries with fflate; `file://` falls back to generated script chunks.
 
 Templates currently implemented:
 
@@ -57,7 +57,7 @@ Tianzi and Mizi are grid styles, not templates. The selected grid style applies 
 - Support PWA installation with a manifest, service worker, app icons, standalone display, and basic offline caching.
 - Direct PDF export uses locally vendored jsPDF and native PDF path/line/text primitives. Never rasterize the whole page through Canvas or add a full-page image. Keep browser printing as a separate action.
 - While an on-demand stroke ZIP is loading or decompressing, expose an explicit loading state and render pending grid glyphs with the browser's regular-script fallback stack at a size close to the final SVG strokes.
-- After the initial page has been stable for 15 seconds, advertise unused stroke ZIP packs with low-priority HTML5 `prefetch` hints. Exclude packs involved in the current page, defer while active stroke loads are running, and skip on save-data, 2G, offline, or `file://` contexts.
+- After the initial page has been stable for 15 seconds, advertise unused stroke ZIP packs in small batches with low-priority HTML5 `prefetch` hints. Exclude packs involved in the current page, defer while active stroke loads are running, and skip on save-data, 2G, offline, or `file://` contexts.
 - Stroke data comes from `hanzi-writer-data`, derived from Make Me A Hanzi. Preserve attribution and license notes when expanding data.
 
 ## Product Decisions
@@ -65,7 +65,7 @@ Tianzi and Mizi are grid styles, not templates. The selected grid style applies 
 - Target users: both parents and teachers.
 - Target character coverage: all single-codepoint characters available in `hanzi-writer-data@2.0.1`.
 - Do not bundle the full upstream character data into the main payload. A rough `hanzi-writer-data@2.0.1` estimate showed a 3500-character gzip sample around 3.95MB, above the 200KB direct-bundle threshold.
-- Preferred data strategy: keep a tiny built-in set, split the full upstream data into ZIP packs of up to 1000 characters, selectively fetch the pack containing the needed chunk, extract JSON entries with fflate, keep a 16-chunk LRU in memory, and let the Service Worker cache fetched ZIP packs. Preserve script chunks for direct `file://` use, but exclude them from `dist/`.
+- Preferred data strategy: keep a tiny built-in set, split the full upstream data into ZIP packs of up to 250 characters, selectively fetch the pack containing the needed chunk, extract JSON entries with fflate, keep a 16-chunk LRU in memory, and let the Service Worker cache fetched ZIP packs. Preserve script chunks for direct `file://` use, but exclude them from `dist/`.
 - Required formal templates: tracing practice, stroke-order breakdown, blank practice paper, and article tracing. Tianzi/Mizi is an independent grid-style setting shared by all templates.
 - Blank practice paper does not require input text or stroke data. It should generate printable Tianzi or Mizi grid pages directly from layout settings.
 - Stroke order is for print, not animation-first. Prioritize static clarity: numbers, start dots, direction arrows, and step breakdowns.
