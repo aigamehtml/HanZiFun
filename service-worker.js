@@ -30,10 +30,20 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request).then((response) => {
-      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
-      return response;
-    }))
-  );
+  const result = caches.match(event.request).then(async (cached) => {
+    if (cached) return { response: cached, cacheWrite: Promise.resolve() };
+    const response = await fetch(event.request);
+    let cacheWrite = Promise.resolve();
+    if (response.ok) {
+      // Clone before the original response is returned and its body is consumed.
+      const cacheResponse = response.clone();
+      cacheWrite = caches.open(CACHE_NAME)
+        .then((cache) => cache.put(event.request, cacheResponse))
+        .catch(() => undefined);
+    }
+    return { response, cacheWrite };
+  });
+
+  event.respondWith(result.then(({ response }) => response));
+  event.waitUntil(result.then(({ cacheWrite }) => cacheWrite).catch(() => undefined));
 });
