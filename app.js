@@ -74,6 +74,8 @@ const GRID_STYLE_LABELS = {
   mi: "米字格",
 };
 
+const PROGRESSIVE_TRACE_MODES = new Set(["progressive", "progressive-blank"]);
+
 const els = {
   controls: document.querySelector("#controls"),
   pages: document.querySelector("#pages"),
@@ -308,12 +310,19 @@ function progressiveRowsNeeded(character, maximumCells) {
 
 function makeProgressiveCells(character, cellCount, startStep, hasLeadingCell) {
   const strokeCount = window.HANZI_STROKES?.[character]?.strokes.length || 1;
-  return Array.from({ length: cellCount }, (_, index) => makeCharacterSvg(character, {
-    trace: true,
-    mode: "step",
-    step: Math.min(startStep + index, strokeCount - 1),
-    joinLeft: settings.cellGapMm === 0 && (hasLeadingCell || index > 0),
-  })).join("");
+  return Array.from({ length: cellCount }, (_, index) => {
+    const step = startStep + index;
+    const joinLeft = settings.cellGapMm === 0 && (hasLeadingCell || index > 0);
+    if (settings.traceMode === "progressive-blank" && step >= strokeCount) {
+      return makeCharacterSvg("", { blank: true, joinLeft });
+    }
+    return makeCharacterSvg(character, {
+      trace: true,
+      mode: "step",
+      step: Math.min(step, strokeCount - 1),
+      joinLeft,
+    });
+  }).join("");
 }
 
 function makeStandardRow(row, maximumCells) {
@@ -324,7 +333,7 @@ function makeStandardRow(row, maximumCells) {
     ? `<div class="char-info"><span class="pinyin">${escapeHtml(pinyinFor(character))}</span><strong>${escapeHtml(character)}</strong></div>`
     : "";
   let cells;
-  if (settings.traceMode === "progressive") {
+  if (PROGRESSIVE_TRACE_MODES.has(settings.traceMode)) {
     const isFirstRow = rowIndex === 0;
     const startStep = isFirstRow ? 0 : maximumCells - 1 + (rowIndex - 1) * maximumCells;
     const leadingCell = isFirstRow ? makeCharacterSvg(character) : "";
@@ -405,7 +414,7 @@ function renderStandardPages(characters, dimensions) {
   const pages = [];
   let currentPage = [];
   for (const character of characters) {
-    const requiredRows = settings.traceMode === "progressive" ? progressiveRowsNeeded(character, maximumCells) : 1;
+    const requiredRows = PROGRESSIVE_TRACE_MODES.has(settings.traceMode) ? progressiveRowsNeeded(character, maximumCells) : 1;
     const characterRowCount = Math.max(configuredRowsPerCharacter, requiredRows);
     rowsPerCharacter = Math.max(rowsPerCharacter, characterRowCount);
     if (requiredRows > configuredRowsPerCharacter) autoExpandedRows = true;

@@ -376,6 +376,10 @@ textarea:focus-visible {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.trace-mode-segmented {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .grid-color-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
