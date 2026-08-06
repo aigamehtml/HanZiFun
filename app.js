@@ -282,7 +282,7 @@ function makeCopyCell(character, options = {}) {
     return makeCharacterSvg(character, { ...options, trace: true, gridStyle: gridStyle() });
   }
   const grid = makeGrid(gridStyle(), options);
-  return `<svg class="hanzi-cell copy-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 临摹格">${grid}<text class="copy-glyph" x="512" y="650" opacity="${settings.traceOpacity}">${escapeHtml(character)}</text></svg>`;
+  return `<svg class="hanzi-cell copy-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 临摹格">${grid}<text class="copy-glyph" x="512" y="512" opacity="${settings.traceOpacity}">${escapeHtml(character)}</text></svg>`;
 }
 
 function pinyinFor(character) {
@@ -975,20 +975,32 @@ const parsedPathCache = new Map();
 
 function parseSvgPath(pathData) {
   if (parsedPathCache.has(pathData)) return parsedPathCache.get(pathData);
-  const tokens = pathData.match(/[MLCQZ]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g) || [];
+  const tokens = pathData.match(/[A-Za-z]|[-+]?(?:\d*\.\d+|\d+\.?)(?:[eE][-+]?\d+)?/g) || [];
   const operations = [];
   let index = 0;
   let current = { x: 0, y: 0 };
   let start = { x: 0, y: 0 };
   while (index < tokens.length) {
-    const command = tokens[index++];
-    const number = () => Number(tokens[index++]);
+    const rawCommand = tokens[index++];
+    const command = rawCommand === "z" ? "Z" : rawCommand;
+    const number = () => {
+      const token = tokens[index++];
+      const value = Number(token);
+      if (token === undefined || !Number.isFinite(value)) throw new Error(`SVG 路径命令 ${command} 缺少坐标`);
+      return value;
+    };
     if (command === "M") {
       current = { x: number(), y: number() };
       start = { ...current };
       operations.push({ op: "m", points: [current] });
     } else if (command === "L") {
       current = { x: number(), y: number() };
+      operations.push({ op: "l", points: [current] });
+    } else if (command === "H") {
+      current = { x: number(), y: current.y };
+      operations.push({ op: "l", points: [current] });
+    } else if (command === "V") {
+      current = { x: current.x, y: number() };
       operations.push({ op: "l", points: [current] });
     } else if (command === "Q") {
       const control = { x: number(), y: number() };
@@ -1007,7 +1019,7 @@ function parseSvgPath(pathData) {
       operations.push({ op: "h", points: [] });
       current = { ...start };
     } else {
-      throw new Error(`不支持的 SVG 路径命令：${command}`);
+      throw new Error(`不支持的 SVG 路径命令：${rawCommand}`);
     }
   }
   parsedPathCache.set(pathData, operations);

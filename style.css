@@ -858,14 +858,10 @@ svg .fallback-glyph,
 svg .copy-glyph {
   fill: var(--stroke-active);
   font-family: "Kaiti SC", STKaiti, KaiTi, "AR PL UKai CN", "Noto Serif CJK SC", serif;
-  font-size: 760px;
+  font-size: 850px;
   font-weight: 400;
   dominant-baseline: central;
   text-anchor: middle;
-}
-
-svg .copy-glyph {
-  dominant-baseline: auto;
 }
 
 .pending-cell {
