@@ -1662,10 +1662,45 @@ async function exportPdf() {
 }
 
 function printWorksheet() {
+  // Detect if window.print() actually works — some mobile browsers (e.g. Xiaomi)
+  // silently ignore it without opening any print dialog.
+  let printWorked = false;
+  const onBeforePrint = () => { printWorked = true; };
+  window.addEventListener("beforeprint", onBeforePrint, { once: true });
+
   els.printNote.textContent = "打印时请选择与预览一致的纸张，并使用“实际大小 / 100%”，关闭浏览器页眉页脚。";
   els.printNote.hidden = false;
   setTimeout(() => { els.printNote.hidden = true; }, 5000);
+
   window.print();
+
+  // Synchronous print (desktop): beforeprint fired during window.print()
+  if (printWorked) {
+    window.removeEventListener("beforeprint", onBeforePrint);
+    return;
+  }
+
+  // Async print or unsupported: wait briefly, then fall back if needed
+  setTimeout(async () => {
+    window.removeEventListener("beforeprint", onBeforePrint);
+    if (printWorked) return;
+
+    // window.print() is unsupported — generate PDF for the user to print manually
+    els.printNote.hidden = true;
+    const finish = beginPdfOperation(els.printBtn);
+    if (!finish) return;
+    try {
+      reportPdfProgress("正在生成 PDF…");
+      const { pdf, pageCount } = await buildPdfDocument();
+      pdf.save(exportFilename());
+      showExportStatus(`浏览器不支持直接打印，${pageCount} 页 PDF 已下载，请打开后选择打印`);
+    } catch (error) {
+      console.error(error);
+      showExportStatus(error?.message || "打印失败，请尝试使用导出 PDF 功能", true);
+    } finally {
+      finish();
+    }
+  }, 500);
 }
 
 function updateHeaderFieldVisibility() {
