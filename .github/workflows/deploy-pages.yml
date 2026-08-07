@@ -39,3 +39,13 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+      - name: Warm jsDelivr CDN cache
+        run: |
+          COMMIT=$(git rev-parse --short HEAD)
+          for pack in 000 001 002 003 004; do
+            curl -sS -o /dev/null --max-time 10 \
+              "https://cdn.jsdelivr.net/gh/rickytan/HanZiFun@${COMMIT}/data/strokes-pack-${pack}.zip" &
+          done
+          wait
+          echo "Warmed jsDelivr cache for packs 000-004 at commit ${COMMIT}"
