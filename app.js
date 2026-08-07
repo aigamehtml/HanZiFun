@@ -1644,22 +1644,6 @@ async function buildPdfDocument() {
   return { pdf, pageCount: pages.length };
 }
 
-function canSharePdfFile(file) {
-  if (typeof navigator.share !== "function" || typeof navigator.canShare !== "function") return false;
-  try {
-    return navigator.canShare({ files: [file] });
-  } catch {
-    return false;
-  }
-}
-
-function isMobileDevice() {
-  const ua = navigator.userAgent || "";
-  return /Android|iPhone|iPad|iPod/u.test(ua)
-    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
-    || window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-}
-
 async function exportPdf() {
   const finish = beginPdfOperation(els.exportPdfBtn);
   if (!finish) return;
@@ -1667,21 +1651,6 @@ async function exportPdf() {
     const { pdf, pageCount } = await buildPdfDocument();
     reportPdfProgress("保存 PDF…");
     await nextPaint();
-
-    // Mobile: try Web Share API (save to Files, AirDrop, etc.); Desktop: direct download
-    if (isMobileDevice() && canSharePdfFile(new File([pdf.output("blob")], "p.pdf", { type: "application/pdf" }))) {
-      const blob = pdf.output("blob");
-      const file = new File([blob], exportFilename(), { type: "application/pdf" });
-      try {
-        await navigator.share({ title: APP_TITLE, text: "汉字练习本 PDF", files: [file] });
-        showExportStatus(`已生成 ${pageCount} 页 PDF`);
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-        // Fall through to download
-      }
-    }
-
     pdf.save(exportFilename());
     showExportStatus(`已生成 ${pageCount} 页 PDF`);
   } catch (error) {
