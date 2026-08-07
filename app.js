@@ -129,7 +129,6 @@ const PACK_FETCH_TIMEOUT_MS = 30000;
 const PACK_PREFETCH_TIMEOUT_MS = 60000;
 const MAX_PACK_RETRIES = 2;
 const MAX_CHUNK_RETRIES = 3;
-const chunkRetryCount = new Map();
 const MAX_CONCURRENT_PACK_DOWNLOADS = 2;
 let activePackDownloads = 0;
 const packDownloadQueue = [];
@@ -709,10 +708,10 @@ function packForChunk(chunkId) {
   return null;
 }
 
-function resolvePackUrl(pack) {
+function resolvePackUrl(pack, preferOrigin = false) {
   if (!pack?.file) return null;
-  if (CDN_BASE && USE_ZIP_PACK) return `${CDN_BASE}/${pack.file}`;
-  return pack.file;
+  if (!CDN_BASE || !USE_ZIP_PACK || preferOrigin) return pack.file;
+  return `${CDN_BASE}/${pack.file}`;
 }
 
 function charactersInChunk(chunkId) {
@@ -741,7 +740,6 @@ function evictUnusedChunks() {
       if (!coreCharacters.has(character)) delete window.HANZI_STROKES[character];
     }
     loadedChunks.delete(chunkId);
-    chunkRetryCount.delete(chunkId);
     failedChunks.delete(chunkId);
   }
 }
@@ -770,7 +768,8 @@ async function openZipArchive(pack) {
         scheduleRender(false);
         try {
           reportPdfProgress("下载笔顺字库…");
-          const response = await fetchWithTimeout(resolvePackUrl(pack) ?? pack.file, {}, PACK_FETCH_TIMEOUT_MS);
+          const preferOrigin = attempt > 0;
+          const response = await fetchWithTimeout(resolvePackUrl(pack, preferOrigin), {}, PACK_FETCH_TIMEOUT_MS);
           if (!response.ok) throw new Error(`Stroke ZIP request failed: ${response.status}`);
           reportPdfProgress("解析笔顺字库…");
           const bytes = new Uint8Array(await response.arrayBuffer());
@@ -836,7 +835,6 @@ function ensureCharacterData(characters) {
         try {
           await (USE_ZIP_PACK ? loadChunkFromZip(chunkId) : loadChunkScript(chunkId));
           pendingChunks.delete(chunkId);
-          chunkRetryCount.delete(chunkId);
           scheduleRender(false);
           return;
         } catch (error) {
@@ -1818,14 +1816,17 @@ function init() {
   if (BUILD_VERSION !== "__BUILD_VERSION__") {
     const stored = localStorage.getItem("hanzifun.version");
     if (stored && stored !== BUILD_VERSION) {
-      if ("caches" in window) {
-        caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith("hanzifun-")).map((k) => caches.delete(k)))).then(() => {
-          localStorage.setItem("hanzifun.version", BUILD_VERSION);
-          window.location.reload();
-        });
-      } else {
+      const finishUpgrade = () => {
         localStorage.setItem("hanzifun.version", BUILD_VERSION);
         window.location.reload();
+      };
+      if ("caches" in window) {
+        caches.keys()
+          .then((keys) => Promise.all(keys.filter((k) => k.startsWith("hanzifun-")).map((k) => caches.delete(k))))
+          .then(finishUpgrade)
+          .catch(finishUpgrade);
+      } else {
+        finishUpgrade();
       }
       return;
     }
@@ -1877,6 +1878,7 @@ function init() {
   }, { passive: false });
   window.addEventListener("resize", () => updatePreviewScale(paperDimensions()));
   window.addEventListener("online", () => {
+    failedChunks.clear();
     scheduleRender(false);
     scheduleStrokePackPrefetch();
   });

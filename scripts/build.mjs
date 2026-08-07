@@ -36,7 +36,7 @@ for (const file of (await readdir(path.join(root, "data"))).filter((file) => /^s
   fingerprint.update(await readFile(path.join(root, "data", file)));
 }
 const version = `v${packageVersion}-${gitCommit}-${fingerprint.digest("hex").slice(0, 10)}`;
-const cdnBase = `https://cdn.jsdelivr.net/gh/rickytan/HanZiFun@${gitCommit}`;
+const cdnBase = gitCommit !== "unknown" ? `https://cdn.jsdelivr.net/gh/rickytan/HanZiFun@${gitCommit}` : "";
 
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
