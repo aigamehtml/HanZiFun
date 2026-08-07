@@ -242,18 +242,6 @@
               <label><input data-setting="traceMode" type="radio" name="traceMode" value="progressive-blank"> <span>累加后留白</span></label>
             </div>
           </div>
-          <label class="field standard-only flex flex-col gap-1.5">
-            <span>描红颜色</span>
-            <input id="traceColor" data-setting="traceColor" type="color">
-          </label>
-          <label class="field standard-only flex flex-col gap-1.5">
-            <span class="range-label">描红透明度 <output id="traceOpacityOutput"></output></span>
-            <input id="traceOpacity" data-setting="traceOpacity" type="range" min="0.1" max="1" step="0.01">
-          </label>
-          <label class="field standard-only flex flex-col gap-1.5">
-            <span class="range-label">描红字大小 <output id="traceScaleOutput"></output></span>
-            <input id="traceScale" data-setting="traceScale" type="range" min="0.5" max="1" step="0.05">
-          </label>
           <div class="check-grid stroke-options grid grid-cols-2 gap-x-3">
             <label class="check standard-only"><input id="showRowGuide" data-setting="showRowGuide" type="checkbox"> <span>格外引导字</span></label>
             <label class="check"><input id="showStrokeNumbers" data-setting="showStrokeNumbers" type="checkbox"> <span>笔顺编号</span></label>
@@ -261,6 +249,22 @@
             <label class="check"><input id="showArrows" data-setting="showArrows" type="checkbox"> <span>方向箭头</span></label>
             <label class="check"><input id="showGuides" data-setting="showGuides" type="checkbox"> <span>辅助线</span></label>
           </div>
+        </section>
+
+        <section class="control-section trace-style space-y-4">
+          <h2>描红样式</h2>
+          <label class="field color-field flex flex-col gap-1.5">
+            <span>描红颜色</span>
+            <input id="traceColor" data-setting="traceColor" type="color">
+          </label>
+          <label class="field flex flex-col gap-1.5">
+            <span class="range-label">描红透明度 <output id="traceOpacityOutput"></output></span>
+            <input id="traceOpacity" data-setting="traceOpacity" type="range" min="0.1" max="1" step="0.01">
+          </label>
+          <label class="field flex flex-col gap-1.5">
+            <span class="range-label">描红字大小 <output id="traceScaleOutput"></output></span>
+            <input id="traceScale" data-setting="traceScale" type="range" min="0.5" max="1" step="0.05">
+          </label>
         </section>
 
         <section class="control-section space-y-4">

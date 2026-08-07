@@ -507,7 +507,9 @@ body[data-template="blank"] .blank-only {
 body[data-template="blank"] .practice-settings,
 body[data-template="blank"] .standard-only,
 body[data-template="blank"] .stroke-options,
+body[data-template="blank"] .trace-style,
 body[data-template="stroke"] .standard-only,
+body[data-template="stroke"] .trace-style,
 body[data-template="copy"] .practice-settings,
 body[data-template="copy"] .content-options {
   display: none;

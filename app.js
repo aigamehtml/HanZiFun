@@ -307,7 +307,7 @@ function makeCharacterSvg(character, options = {}) {
     const opacity = options.trace ? settings.traceOpacity : 1;
     const colorStyle = options.trace ? ` style="--trace-color:${settingColor("traceColor")}"` : "";
     const glyphClass = options.trace ? "fallback-glyph trace-glyph" : "fallback-glyph";
-    const traceScale = options.trace ? (settings.traceScale ?? 1) : 1;
+    const traceScale = (options.trace || options.applyTraceScale) ? (settings.traceScale ?? 1) : 1;
     const textTransform = traceScale !== 1 ? ` transform="translate(512 512) scale(${traceScale}) translate(-512 -512)"` : "";
     return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="${glyphClass}" x="512" y="512" opacity="${opacity}"${colorStyle}${textTransform}>${escapeHtml(character)}</text></svg>`;
   }
@@ -316,7 +316,8 @@ function makeCharacterSvg(character, options = {}) {
   const dataAttrs = [`data-ch="${escapeHtml(character)}"`];
   if (options.trace) dataAttrs.push('data-trace="1"');
   if (options.mode === "step") dataAttrs.push(`data-step="${options.step ?? data.strokes.length - 1}"`);
-  const traceScale = options.trace ? (settings.traceScale ?? 1) : 1;
+  if (options.applyTraceScale) dataAttrs.push('data-trace-scale="1"');
+  const traceScale = (options.trace || options.applyTraceScale) ? (settings.traceScale ?? 1) : 1;
   const scaleWrap = traceScale !== 1 ? `<g transform="translate(512 512) scale(${traceScale}) translate(-512 -512)">` : "";
   const scaleClose = traceScale !== 1 ? "</g>" : "";
   return `<svg class="hanzi-cell" ${dataAttrs.join(" ")} viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 字练习格">${grid}${scaleWrap}<g transform="translate(0 ${BASELINE}) scale(1 -1)">${paths}</g>${scaleClose}${annotations}</svg>`;
@@ -381,10 +382,10 @@ function makeStandardRow(row, maximumCells) {
   if (PROGRESSIVE_TRACE_MODES.has(settings.traceMode)) {
     const isFirstRow = rowIndex === 0;
     const startStep = isFirstRow ? 0 : maximumCells - 1 + (rowIndex - 1) * maximumCells;
-    const leadingCell = isFirstRow ? makeCharacterSvg(character) : "";
+    const leadingCell = isFirstRow ? makeCharacterSvg(character, { applyTraceScale: true }) : "";
     cells = `${leadingCell}${makeProgressiveCells(character, maximumCells - (isFirstRow ? 1 : 0), startStep, isFirstRow)}`;
   } else {
-    cells = `${makeCharacterSvg(character)}${makePracticeCells(character, maximumCells - 1)}`;
+    cells = `${makeCharacterSvg(character, { applyTraceScale: true })}${makePracticeCells(character, maximumCells - 1)}`;
   }
   return `<article class="${rowClass}" ${rowStyle}>
     ${guide}<div class="exercise-strip">${cells}</div>
@@ -1473,7 +1474,8 @@ function drawCellGlyph(pdf, source, square) {
   const character = source.dataset.ch;
   const trace = source.dataset.trace === "1";
   const step = source.dataset.step;
-  const traceScale = trace ? (settings.traceScale ?? 1) : 1;
+  const applyScale = trace || source.dataset.traceScale === "1";
+  const traceScale = applyScale ? (settings.traceScale ?? 1) : 1;
   // 缩小 trace glyph 的渲染区域，保持居中
   const scaledSize = square.width * traceScale;
   const scaledSquare = {
@@ -1822,6 +1824,12 @@ function setDrawer(open) {
 
 function registerPwa() {
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (refreshing) return;
+      refreshing = true;
+      window.location.reload();
+    });
     navigator.serviceWorker.register("./service-worker.js").catch(() => {
       els.dataStatus.textContent = "离线缓存暂不可用";
     });

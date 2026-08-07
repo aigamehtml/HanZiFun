@@ -1,4 +1,5 @@
 const CACHE_NAME = "hanzifun-__BUILD_VERSION__";
+const CDN_ORIGIN = "https://cdn.jsdelivr.net";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -20,7 +21,19 @@ const APP_SHELL = [
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then((cache) => Promise.all(
+        APP_SHELL.map((url) =>
+          fetch(url, { cache: "no-cache" })
+            .then((response) => {
+              if (!response.ok) throw new Error(`Failed to fetch ${url}: ${response.status}`);
+              return cache.put(url, response);
+            })
+        )
+      ))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -33,14 +46,38 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  const origin = new URL(event.request.url).origin;
-  if (origin !== self.location.origin && origin !== "https://cdn.jsdelivr.net") return;
-  const result = caches.match(event.request).then(async (cached) => {
-    if (cached) return { response: cached, cacheWrite: Promise.resolve() };
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 60000);
-    try {
-      const response = await fetch(event.request, { signal: controller.signal });
+  const url = new URL(event.request.url);
+  const isCDN = url.origin === CDN_ORIGIN;
+  if (url.origin !== self.location.origin && !isCDN) return;
+
+  if (isCDN) {
+    // CDN (jsDelivr): cache-first — content-hashed filenames guarantee freshness
+    const result = caches.match(event.request).then(async (cached) => {
+      if (cached) return { response: cached, cacheWrite: Promise.resolve() };
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60000);
+      try {
+        const response = await fetch(event.request, { signal: controller.signal });
+        let cacheWrite = Promise.resolve();
+        if (response.ok) {
+          const cacheResponse = response.clone();
+          cacheWrite = caches.open(CACHE_NAME)
+            .then((cache) => cache.put(event.request, cacheResponse))
+            .catch(() => undefined);
+        }
+        return { response, cacheWrite };
+      } finally {
+        clearTimeout(timer);
+      }
+    });
+    event.respondWith(result.then(({ response }) => response));
+    event.waitUntil(result.then(({ cacheWrite }) => cacheWrite).catch(() => undefined));
+    return;
+  }
+
+  // Same-origin: network-first — always fetch fresh content, fall back to cache offline
+  const result = fetch(event.request, { cache: "no-cache" })
+    .then((response) => {
       let cacheWrite = Promise.resolve();
       if (response.ok) {
         const cacheResponse = response.clone();
@@ -49,10 +86,12 @@ self.addEventListener("fetch", (event) => {
           .catch(() => undefined);
       }
       return { response, cacheWrite };
-    } finally {
-      clearTimeout(timer);
-    }
-  });
+    })
+    .catch(async () => {
+      const cached = await caches.match(event.request);
+      if (cached) return { response: cached, cacheWrite: Promise.resolve() };
+      throw new Error("Network failed and no cache available");
+    });
 
   event.respondWith(result.then(({ response }) => response));
   event.waitUntil(result.then(({ cacheWrite }) => cacheWrite).catch(() => undefined));
