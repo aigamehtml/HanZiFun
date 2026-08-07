@@ -198,7 +198,6 @@ textarea:focus-visible {
 .field input:not([type]),
 .field input[type="date"],
 .field input[type="number"],
-.field select,
 .field textarea,
 .inline-action select {
   width: 100%;
@@ -209,6 +208,21 @@ textarea:focus-visible {
   padding: 8px 10px;
   background: #ffffff;
   color: var(--ink);
+}
+
+.field select,
+.inline-action select {
+  padding: 8px 32px 8px 10px;
+  background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%23888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 10px center;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+
+.field input[type="date"] {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 .field textarea {
@@ -426,12 +440,25 @@ textarea:focus-visible {
   grid-auto-flow: column;
   grid-auto-columns: max-content;
   gap: 8px;
+  padding-inline: 4px;
 }
 
 .orientation-icon {
   display: inline-block;
   border: 1.5px solid currentColor;
   border-radius: 1px;
+  margin: 1px 2px 1px 0;
+}
+
+.zoom-reset {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .portrait-icon {

@@ -123,15 +123,14 @@
               <label><input data-setting="paperSize" type="radio" name="paperSize" value="Letter"> <span>Letter</span></label>
             </div>
           </div>
-          <div class="field space-y-1.5">
-            <span>页面方向</span>
-            <div class="segmented orientation-segmented" role="radiogroup" aria-label="页面方向">
-              <label><input data-setting="orientation" type="radio" name="orientation" value="portrait"> <span><i class="orientation-icon portrait-icon" aria-hidden="true"></i>纵向</span></label>
-              <label><input data-setting="orientation" type="radio" name="orientation" value="landscape"> <span><i class="orientation-icon landscape-icon" aria-hidden="true"></i>横向</span></label>
-            </div>
-          </div>
           <div class="field flex flex-col gap-1.5">
-            <label for="marginMm">页边距（mm）</label>
+            <div class="flex items-end justify-between gap-3">
+              <label for="marginMm">页边距（mm）</label>
+              <div class="segmented orientation-segmented" role="radiogroup" aria-label="页面方向">
+                <label><input data-setting="orientation" type="radio" name="orientation" value="portrait"> <span><i class="orientation-icon portrait-icon" aria-hidden="true"></i>纵向</span></label>
+                <label><input data-setting="orientation" type="radio" name="orientation" value="landscape"> <span><i class="orientation-icon landscape-icon" aria-hidden="true"></i>横向</span></label>
+              </div>
+            </div>
             <div class="stepper" data-stepper>
               <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减小页边距">−</button>
               <input id="marginMm" class="stepper-input" data-setting="marginMm" type="number" min="6" max="24" step="1">
@@ -311,8 +310,9 @@
           </div>
           <label class="zoom-control">
             <span>缩放</span>
-            <input id="zoom" data-setting="zoom" type="range" min="35" max="150" step="5">
+            <input id="zoom" data-setting="zoom" type="range" min="35" max="200" step="5">
             <output id="zoomOutput">70%</output>
+            <button class="button quiet zoom-reset" id="zoomReset" type="button" aria-label="重置缩放到 100%" title="重置到 100%">⟲</button>
           </label>
         </div>
         <div id="pages" class="pages" aria-live="polite"></div>

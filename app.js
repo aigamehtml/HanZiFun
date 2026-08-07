@@ -1862,6 +1862,7 @@ function init() {
   });
   els.clearBtn.addEventListener("click", () => {
     settings.inputText = "";
+    settings.title = "";
     applySettingsToControls();
     scheduleRender();
   });
@@ -1870,12 +1871,18 @@ function init() {
   els.previewWrap.addEventListener("wheel", (event) => {
     if ((!event.metaKey && !event.ctrlKey) || event.deltaY === 0) return;
     event.preventDefault();
-    const nextZoom = clamp(settings.zoom + (event.deltaY < 0 ? 5 : -5), 35, 150);
+    const nextZoom = clamp(settings.zoom + (event.deltaY < 0 ? 5 : -5), 35, 200);
     if (nextZoom === settings.zoom) return;
     settings.zoom = nextZoom;
     document.querySelector("#zoom").value = nextZoom;
     scheduleRender();
   }, { passive: false });
+  document.querySelector("#zoomReset")?.addEventListener("click", () => {
+    settings.zoom = 100;
+    document.querySelector("#zoom").value = 100;
+    document.querySelector("#zoomOutput").value = "100%";
+    scheduleRender();
+  });
   window.addEventListener("resize", () => updatePreviewScale(paperDimensions()));
   window.addEventListener("online", () => {
     failedChunks.clear();
