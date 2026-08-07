@@ -9,6 +9,8 @@ const context = {
   Promise,
   Response,
   setTimeout,
+  clearTimeout,
+  AbortController,
   fetch: async () => new Response("stroke-data", { status: 200 }),
   caches: {
     match: async () => undefined,

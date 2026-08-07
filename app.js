@@ -8,6 +8,8 @@ const STROKE_ACTIVE_COLOR = "#202b33";
 const STROKE_DONE_COLOR = "#b7c0c7";
 const MAX_CACHED_CHUNKS = 16;
 const USE_ZIP_PACK = location.protocol !== "file:";
+const BUILD_VERSION = "__BUILD_VERSION__";
+const CDN_BASE = "__CDN_BASE__".startsWith("https://") ? "__CDN_BASE__" : "";
 const STEP_CELL_MM = 16;
 const STEP_COLUMN_GAP_MM = 2.5;
 const STEP_ITEM_HEIGHT_MM = 20;
@@ -123,6 +125,22 @@ let exportStatusTimer = 0;
 let strokePrefetchScheduled = false;
 let strokePrefetchCursor = 0;
 let pdfOperationActive = false;
+const PACK_FETCH_TIMEOUT_MS = 30000;
+const PACK_PREFETCH_TIMEOUT_MS = 60000;
+const MAX_PACK_RETRIES = 2;
+const MAX_CHUNK_RETRIES = 3;
+const chunkRetryCount = new Map();
+const MAX_CONCURRENT_PACK_DOWNLOADS = 2;
+let activePackDownloads = 0;
+const packDownloadQueue = [];
+const prefetchedPackIds = new Set();
+
+function fetchWithTimeout(url, options = {}, timeout = PACK_FETCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timer));
+}
 let activePdfProgress = null;
 let preparedMobilePdf = null;
 let pdfProtectedCharacters = [];
@@ -547,6 +565,14 @@ function unsupportedCharacters(characters) {
 function loadScript(source) {
   if (scriptLoadPromises.has(source)) return scriptLoadPromises.get(source);
   const promise = new Promise((resolve, reject) => {
+    if (source.includes("jspdf") && window.jspdf?.jsPDF) {
+      resolve();
+      return;
+    }
+    if (source.includes("fflate") && window.fflate) {
+      resolve();
+      return;
+    }
     const existing = document.querySelector(`script[src="${source}"]`);
     if (existing?.dataset.loaded === "true") {
       resolve();
@@ -683,6 +709,12 @@ function packForChunk(chunkId) {
   return null;
 }
 
+function resolvePackUrl(pack) {
+  if (!pack?.file) return null;
+  if (CDN_BASE && USE_ZIP_PACK) return `${CDN_BASE}/${pack.file}`;
+  return pack.file;
+}
+
 function charactersInChunk(chunkId) {
   if (!chunkCharacters.has(chunkId)) {
     chunkCharacters.set(
@@ -709,6 +741,8 @@ function evictUnusedChunks() {
       if (!coreCharacters.has(character)) delete window.HANZI_STROKES[character];
     }
     loadedChunks.delete(chunkId);
+    chunkRetryCount.delete(chunkId);
+    failedChunks.delete(chunkId);
   }
 }
 
@@ -722,25 +756,45 @@ function registerChunk(chunkId, data) {
 async function openZipArchive(pack) {
   if (!pack) throw new Error("Stroke ZIP pack not found");
   if (zipArchivePromises.has(pack.id)) return zipArchivePromises.get(pack.id);
-  zipArchiveStates.set(pack.id, "loading");
-  scheduleRender(false);
   const promise = (async () => {
-    reportPdfProgress("载入解压组件…");
-    await loadScript("vendor/fflate.min.js");
-    reportPdfProgress("下载笔顺字库…");
-    const response = await fetch(pack.file);
-    if (!response.ok) throw new Error(`Stroke ZIP request failed: ${response.status}`);
-    reportPdfProgress("解析笔顺字库…");
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    reportPdfProgress("读取笔顺数据…");
-    zipArchiveStates.set(pack.id, "ready");
-    scheduleRender(false);
-    return { bytes };
-  })().catch((error) => {
-    zipArchiveStates.set(pack.id, "error");
-    scheduleRender(false);
-    throw error;
-  });
+    while (activePackDownloads >= MAX_CONCURRENT_PACK_DOWNLOADS) {
+      await new Promise((resolve) => packDownloadQueue.push(resolve));
+    }
+    activePackDownloads += 1;
+    try {
+      reportPdfProgress("载入解压组件…");
+      await loadScript("vendor/fflate.min.js");
+      let lastError;
+      for (let attempt = 0; attempt <= MAX_PACK_RETRIES; attempt += 1) {
+        zipArchiveStates.set(pack.id, "loading");
+        scheduleRender(false);
+        try {
+          reportPdfProgress("下载笔顺字库…");
+          const response = await fetchWithTimeout(resolvePackUrl(pack) ?? pack.file, {}, PACK_FETCH_TIMEOUT_MS);
+          if (!response.ok) throw new Error(`Stroke ZIP request failed: ${response.status}`);
+          reportPdfProgress("解析笔顺字库…");
+          const bytes = new Uint8Array(await response.arrayBuffer());
+          reportPdfProgress("读取笔顺数据…");
+          zipArchiveStates.set(pack.id, "ready");
+          scheduleRender(false);
+          return { bytes };
+        } catch (error) {
+          lastError = error;
+          if (attempt < MAX_PACK_RETRIES) {
+            reportPdfProgress(`重试下载笔顺字库 (${attempt + 1}/${MAX_PACK_RETRIES})…`);
+            await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+          }
+        }
+      }
+      zipArchiveStates.set(pack.id, "error");
+      scheduleRender(false);
+      zipArchivePromises.delete(pack.id);
+      throw lastError;
+    } finally {
+      activePackDownloads -= 1;
+      if (packDownloadQueue.length > 0) packDownloadQueue.shift()();
+    }
+  })();
   zipArchivePromises.set(pack.id, promise);
   return promise;
 }
@@ -775,16 +829,27 @@ function ensureCharacterData(characters) {
 
   for (const chunkId of chunkIds) {
     const needsData = charactersInChunk(chunkId).some((character) => characters.includes(character) && !window.HANZI_STROKES?.[character]);
-    if (!needsData || pendingChunks.has(chunkId) || failedChunks.has(chunkId)) continue;
-    const promise = (USE_ZIP_PACK ? loadChunkFromZip(chunkId) : loadChunkScript(chunkId)).then(() => {
-      pendingChunks.delete(chunkId);
-      scheduleRender(false);
-    }).catch((error) => {
-      console.error(`Stroke chunk ${chunkId} failed`, error);
+    if (!needsData || pendingChunks.has(chunkId)) continue;
+    if (failedChunks.has(chunkId)) continue;
+    const promise = (async () => {
+      for (let attempt = 0; attempt < MAX_CHUNK_RETRIES; attempt += 1) {
+        try {
+          await (USE_ZIP_PACK ? loadChunkFromZip(chunkId) : loadChunkScript(chunkId));
+          pendingChunks.delete(chunkId);
+          chunkRetryCount.delete(chunkId);
+          scheduleRender(false);
+          return;
+        } catch (error) {
+          console.error(`Stroke chunk ${chunkId} failed (attempt ${attempt + 1}/${MAX_CHUNK_RETRIES})`, error);
+          if (attempt < MAX_CHUNK_RETRIES - 1) {
+            await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+          }
+        }
+      }
       pendingChunks.delete(chunkId);
       failedChunks.add(chunkId);
       scheduleRender(false);
-    });
+    })();
     pendingChunks.set(chunkId, promise);
   }
   return Promise.all(chunkIds.map((chunkId) => pendingChunks.get(chunkId)).filter(Boolean));
@@ -810,24 +875,30 @@ function prefetchUnusedStrokePacks() {
 
   const activePackIds = new Set(activeZipPacks().map((pack) => pack.id));
   const packs = window.HANZI_PACK_INFO?.packs || [];
-  const batchSize = 4;
+  const batchSize = 2;
   let advertised = 0;
   for (let count = 0; count < packs.length && advertised < batchSize; count += 1) {
     const pack = packs[(strokePrefetchCursor + count) % packs.length];
+    if (!pack?.file) continue;
     if (activePackIds.has(pack.id)) continue;
-    if (!pack?.file || zipArchivePromises.has(pack.id)) continue;
-    if (document.head.querySelector(`link[rel="prefetch"][href="${pack.file}"]`)) continue;
-    const link = document.createElement("link");
-    link.rel = "prefetch";
-    link.as = "fetch";
-    link.type = "application/zip";
-    link.href = pack.file;
-    link.fetchPriority = "low";
-    document.head.append(link);
+    if (zipArchivePromises.has(pack.id)) continue;
+    if (prefetchedPackIds.has(pack.id)) continue;
+    prefetchedPackIds.add(pack.id);
     advertised += 1;
+    fetchWithTimeout(resolvePackUrl(pack) ?? pack.file, {}, PACK_PREFETCH_TIMEOUT_MS)
+      .then(async (response) => {
+        if (!response.ok) {
+          prefetchedPackIds.delete(pack.id);
+          return;
+        }
+        await response.arrayBuffer();
+      })
+      .catch(() => {
+        prefetchedPackIds.delete(pack.id);
+      });
   }
   strokePrefetchCursor = (strokePrefetchCursor + Math.max(batchSize, advertised)) % Math.max(1, packs.length);
-  if (packs.some((pack) => !activePackIds.has(pack.id) && !zipArchivePromises.has(pack.id) && !document.head.querySelector(`link[rel="prefetch"][href="${pack.file}"]`))) {
+  if (packs.some((pack) => !activePackIds.has(pack.id) && !zipArchivePromises.has(pack.id) && !prefetchedPackIds.has(pack.id))) {
     scheduleStrokePackPrefetch(4500);
   }
 }
@@ -1744,6 +1815,30 @@ function registerPwa() {
 }
 
 function init() {
+  if (BUILD_VERSION !== "__BUILD_VERSION__") {
+    const stored = localStorage.getItem("hanzifun.version");
+    if (stored && stored !== BUILD_VERSION) {
+      if ("caches" in window) {
+        caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith("hanzifun-")).map((k) => caches.delete(k)))).then(() => {
+          localStorage.setItem("hanzifun.version", BUILD_VERSION);
+          window.location.reload();
+        });
+      } else {
+        localStorage.setItem("hanzifun.version", BUILD_VERSION);
+        window.location.reload();
+      }
+      return;
+    }
+    localStorage.setItem("hanzifun.version", BUILD_VERSION);
+  }
+  if (CDN_BASE) {
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "fetch";
+    link.crossOrigin = "anonymous";
+    link.href = `${CDN_BASE}/data/strokes-pack-000.zip`;
+    document.head.append(link);
+  }
   applySettingsToControls();
   populateContentTemplates();
   for (const control of document.querySelectorAll("[data-setting]")) {
@@ -1788,10 +1883,10 @@ function init() {
   window.addEventListener("offline", () => scheduleRender(false));
   window.addEventListener("load", () => scheduleStrokePackPrefetch(15000));
   window.addEventListener("load", () => {
-    setTimeout(() => {
-      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      if (navigator.onLine && !connection?.saveData && !/(^|-)2g$/.test(connection?.effectiveType || "")) prefetchPdfRuntime();
-    }, 8000);
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (navigator.onLine && !connection?.saveData && !/(^|-)2g$/.test(connection?.effectiveType || "")) {
+      prefetchPdfRuntime();
+    }
   });
   registerPwa();
   render();

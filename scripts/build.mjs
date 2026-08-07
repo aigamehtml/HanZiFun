@@ -8,6 +8,9 @@ import { minify as minifyHtml } from "html-minifier-terser";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const output = path.join(root, "dist");
 const packageVersion = JSON.parse(await readFile(path.join(root, "package.json"), "utf8")).version;
+const { execSync } = await import("node:child_process");
+let gitCommit = "unknown";
+try { gitCommit = execSync("git rev-parse --short HEAD").toString().trim(); } catch {}
 const fingerprint = createHash("sha256");
 for (const file of [
   "index.html",
@@ -32,7 +35,8 @@ for (const file of [
 for (const file of (await readdir(path.join(root, "data"))).filter((file) => /^strokes-pack-\d+\.zip$/.test(file)).sort()) {
   fingerprint.update(await readFile(path.join(root, "data", file)));
 }
-const version = `v${packageVersion}-${fingerprint.digest("hex").slice(0, 10)}`;
+const version = `v${packageVersion}-${gitCommit}-${fingerprint.digest("hex").slice(0, 10)}`;
+const cdnBase = `https://cdn.jsdelivr.net/gh/rickytan/HanZiFun@${gitCommit}`;
 
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
@@ -61,7 +65,7 @@ const css = await transform(await readFile(path.join(root, "style.css"), "utf8")
 await writeFile(path.join(output, "style.css"), css.code);
 await cp(path.join(root, "tailwind.css"), path.join(output, "tailwind.css"));
 
-await minifyJavaScript("app.js", "app.js");
+await minifyJavaScript("app.js", "app.js", { __BUILD_VERSION__: version, __CDN_BASE__: cdnBase });
 await minifyJavaScript("service-worker.js", "service-worker.js", { __BUILD_VERSION__: version });
 await cp(path.join(root, "data"), path.join(output, "data"), { recursive: true });
 await rm(path.join(output, "data", "characters"), { recursive: true, force: true });

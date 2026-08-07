@@ -32,19 +32,26 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET" || new URL(event.request.url).origin !== self.location.origin) return;
+  if (event.request.method !== "GET") return;
+  const origin = new URL(event.request.url).origin;
+  if (origin !== self.location.origin && origin !== "https://cdn.jsdelivr.net") return;
   const result = caches.match(event.request).then(async (cached) => {
     if (cached) return { response: cached, cacheWrite: Promise.resolve() };
-    const response = await fetch(event.request);
-    let cacheWrite = Promise.resolve();
-    if (response.ok) {
-      // Clone before the original response is returned and its body is consumed.
-      const cacheResponse = response.clone();
-      cacheWrite = caches.open(CACHE_NAME)
-        .then((cache) => cache.put(event.request, cacheResponse))
-        .catch(() => undefined);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60000);
+    try {
+      const response = await fetch(event.request, { signal: controller.signal });
+      let cacheWrite = Promise.resolve();
+      if (response.ok) {
+        const cacheResponse = response.clone();
+        cacheWrite = caches.open(CACHE_NAME)
+          .then((cache) => cache.put(event.request, cacheResponse))
+          .catch(() => undefined);
+      }
+      return { response, cacheWrite };
+    } finally {
+      clearTimeout(timer);
     }
-    return { response, cacheWrite };
   });
 
   event.respondWith(result.then(({ response }) => response));
