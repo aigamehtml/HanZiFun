@@ -41,8 +41,9 @@ jobs:
         uses: actions/deploy-pages@v5
 
       - name: Warm jsDelivr CDN cache
+        continue-on-error: true
         run: |
-          COMMIT=$(git rev-parse --short HEAD)
+          COMMIT="${GITHUB_SHA::7}"
           for pack in 000 001 002 003 004; do
             curl -sS -o /dev/null --max-time 10 \
               "https://cdn.jsdelivr.net/gh/rickytan/HanZiFun@${COMMIT}/data/strokes-pack-${pack}.zip" &
