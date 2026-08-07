@@ -198,6 +198,7 @@ textarea:focus-visible {
 .field input:not([type]),
 .field input[type="date"],
 .field input[type="number"],
+.field select,
 .field textarea,
 .inline-action select {
   width: 100%;
