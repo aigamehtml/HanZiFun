@@ -83,14 +83,16 @@
             <h2>内容</h2>
             <span id="contentStatus">准备就绪</span>
           </div>
-          <label class="field flex flex-col gap-1.5">
+          <div class="field flex flex-col gap-1.5">
             <span>内置内容</span>
             <select id="contentCategory" aria-label="内容分类"></select>
-          </label>
-          <div class="inline-action grid grid-cols-[minmax(0,1fr)_auto_auto] items-stretch gap-2">
-            <select id="contentTemplate" aria-label="内容模板"></select>
-            <button class="button secondary" id="replaceContentBtn" type="button">替换</button>
-            <button class="button quiet" id="appendContentBtn" type="button">追加</button>
+          </div>
+          <div class="field flex flex-col gap-1.5">
+            <div class="inline-action grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2">
+              <select id="contentTemplate" aria-label="内容模板"></select>
+              <button class="button secondary content-action-btn" id="replaceContentBtn" type="button">替换</button>
+              <button class="button secondary content-action-btn" id="appendContentBtn" type="button">追加</button>
+            </div>
           </div>
           <label class="field flex flex-col gap-1.5">
             <span>练习文字</span>
@@ -126,15 +128,18 @@
           <div class="field flex flex-col gap-1.5">
             <div class="flex items-end justify-between gap-3">
               <label for="marginMm">页边距（mm）</label>
+              <span class="text-sm" style="color:var(--secondary)">页面方向</span>
+            </div>
+            <div class="flex items-end gap-3">
+              <div class="stepper flex-1" data-stepper>
+                <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减小页边距">−</button>
+                <input id="marginMm" class="stepper-input" data-setting="marginMm" type="number" min="6" max="24" step="1">
+                <button class="stepper-button" type="button" data-stepper-action="increment" aria-label="增大页边距">+</button>
+              </div>
               <div class="segmented orientation-segmented" role="radiogroup" aria-label="页面方向">
                 <label><input data-setting="orientation" type="radio" name="orientation" value="portrait"> <span><i class="orientation-icon portrait-icon" aria-hidden="true"></i>纵向</span></label>
                 <label><input data-setting="orientation" type="radio" name="orientation" value="landscape"> <span><i class="orientation-icon landscape-icon" aria-hidden="true"></i>横向</span></label>
               </div>
-            </div>
-            <div class="stepper" data-stepper>
-              <button class="stepper-button" type="button" data-stepper-action="decrement" aria-label="减小页边距">−</button>
-              <input id="marginMm" class="stepper-input" data-setting="marginMm" type="number" min="6" max="24" step="1">
-              <button class="stepper-button" type="button" data-stepper-action="increment" aria-label="增大页边距">+</button>
             </div>
           </div>
         </section>

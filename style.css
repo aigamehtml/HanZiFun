@@ -481,6 +481,13 @@ textarea:focus-visible {
   height: 13px;
 }
 
+.content-action-btn {
+  min-height: 40px;
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 .panel-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
