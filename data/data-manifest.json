@@ -15,579 +15,675 @@
     "packs": [
       {
         "id": "000",
-        "file": "data/strokes-pack-000.zip",
+        "file": "data/strokes-pack-000-0c47a2e1.zip",
         "chunks": 2,
-        "bytes": 45732
+        "bytes": 45732,
+        "hash": "0c47a2e1"
       },
       {
         "id": "001",
-        "file": "data/strokes-pack-001.zip",
+        "file": "data/strokes-pack-001-a6a6bd18.zip",
         "chunks": 2,
-        "bytes": 57628
+        "bytes": 57628,
+        "hash": "a6a6bd18"
       },
       {
         "id": "002",
-        "file": "data/strokes-pack-002.zip",
+        "file": "data/strokes-pack-002-578245f7.zip",
         "chunks": 2,
-        "bytes": 66639
+        "bytes": 66639,
+        "hash": "578245f7"
       },
       {
         "id": "003",
-        "file": "data/strokes-pack-003.zip",
+        "file": "data/strokes-pack-003-99e84504.zip",
         "chunks": 2,
-        "bytes": 74132
+        "bytes": 74132,
+        "hash": "99e84504"
       },
       {
         "id": "004",
-        "file": "data/strokes-pack-004.zip",
+        "file": "data/strokes-pack-004-521b8872.zip",
         "chunks": 2,
-        "bytes": 77070
+        "bytes": 77070,
+        "hash": "521b8872"
       },
       {
         "id": "005",
-        "file": "data/strokes-pack-005.zip",
+        "file": "data/strokes-pack-005-6a242864.zip",
         "chunks": 2,
-        "bytes": 79825
+        "bytes": 79825,
+        "hash": "6a242864"
       },
       {
         "id": "006",
-        "file": "data/strokes-pack-006.zip",
+        "file": "data/strokes-pack-006-481ed0e9.zip",
         "chunks": 2,
-        "bytes": 87540
+        "bytes": 87540,
+        "hash": "481ed0e9"
       },
       {
         "id": "007",
-        "file": "data/strokes-pack-007.zip",
+        "file": "data/strokes-pack-007-c3155f96.zip",
         "chunks": 2,
-        "bytes": 86593
+        "bytes": 86593,
+        "hash": "c3155f96"
       },
       {
         "id": "008",
-        "file": "data/strokes-pack-008.zip",
+        "file": "data/strokes-pack-008-1025e9c5.zip",
         "chunks": 2,
-        "bytes": 84093
+        "bytes": 84093,
+        "hash": "1025e9c5"
       },
       {
         "id": "009",
-        "file": "data/strokes-pack-009.zip",
+        "file": "data/strokes-pack-009-c165445a.zip",
         "chunks": 2,
-        "bytes": 96956
+        "bytes": 96956,
+        "hash": "c165445a"
       },
       {
         "id": "010",
-        "file": "data/strokes-pack-010.zip",
+        "file": "data/strokes-pack-010-ff3a30d0.zip",
         "chunks": 2,
-        "bytes": 96473
+        "bytes": 96473,
+        "hash": "ff3a30d0"
       },
       {
         "id": "011",
-        "file": "data/strokes-pack-011.zip",
+        "file": "data/strokes-pack-011-3a18089a.zip",
         "chunks": 2,
-        "bytes": 97840
+        "bytes": 97840,
+        "hash": "3a18089a"
       },
       {
         "id": "012",
-        "file": "data/strokes-pack-012.zip",
+        "file": "data/strokes-pack-012-d2cdec68.zip",
         "chunks": 2,
-        "bytes": 93359
+        "bytes": 93359,
+        "hash": "d2cdec68"
       },
       {
         "id": "013",
-        "file": "data/strokes-pack-013.zip",
+        "file": "data/strokes-pack-013-e0d05dc0.zip",
         "chunks": 2,
-        "bytes": 107533
+        "bytes": 107533,
+        "hash": "e0d05dc0"
       },
       {
         "id": "014",
-        "file": "data/strokes-pack-014.zip",
+        "file": "data/strokes-pack-014-51d9ca35.zip",
         "chunks": 2,
-        "bytes": 104740
+        "bytes": 104740,
+        "hash": "51d9ca35"
       },
       {
         "id": "015",
-        "file": "data/strokes-pack-015.zip",
+        "file": "data/strokes-pack-015-5cd339a9.zip",
         "chunks": 2,
-        "bytes": 106208
+        "bytes": 106208,
+        "hash": "5cd339a9"
       },
       {
         "id": "016",
-        "file": "data/strokes-pack-016.zip",
+        "file": "data/strokes-pack-016-93c5aa5d.zip",
         "chunks": 2,
-        "bytes": 102174
+        "bytes": 102174,
+        "hash": "93c5aa5d"
       },
       {
         "id": "017",
-        "file": "data/strokes-pack-017.zip",
+        "file": "data/strokes-pack-017-a4d7973e.zip",
         "chunks": 2,
-        "bytes": 113878
+        "bytes": 113878,
+        "hash": "a4d7973e"
       },
       {
         "id": "018",
-        "file": "data/strokes-pack-018.zip",
+        "file": "data/strokes-pack-018-8749ca16.zip",
         "chunks": 2,
-        "bytes": 115435
+        "bytes": 115435,
+        "hash": "8749ca16"
       },
       {
         "id": "019",
-        "file": "data/strokes-pack-019.zip",
+        "file": "data/strokes-pack-019-a64ac54c.zip",
         "chunks": 2,
-        "bytes": 116761
+        "bytes": 116761,
+        "hash": "a64ac54c"
       },
       {
         "id": "020",
-        "file": "data/strokes-pack-020.zip",
+        "file": "data/strokes-pack-020-3d872298.zip",
         "chunks": 2,
-        "bytes": 112783
+        "bytes": 112783,
+        "hash": "3d872298"
       },
       {
         "id": "021",
-        "file": "data/strokes-pack-021.zip",
+        "file": "data/strokes-pack-021-dccc9794.zip",
         "chunks": 2,
-        "bytes": 121809
+        "bytes": 121809,
+        "hash": "dccc9794"
       },
       {
         "id": "022",
-        "file": "data/strokes-pack-022.zip",
+        "file": "data/strokes-pack-022-8dd12e2b.zip",
         "chunks": 2,
-        "bytes": 124961
+        "bytes": 124961,
+        "hash": "8dd12e2b"
       },
       {
         "id": "023",
-        "file": "data/strokes-pack-023.zip",
+        "file": "data/strokes-pack-023-dd6468bd.zip",
         "chunks": 2,
-        "bytes": 123278
+        "bytes": 123278,
+        "hash": "dd6468bd"
       },
       {
         "id": "024",
-        "file": "data/strokes-pack-024.zip",
+        "file": "data/strokes-pack-024-826bc6d0.zip",
         "chunks": 2,
-        "bytes": 124124
+        "bytes": 124124,
+        "hash": "826bc6d0"
       },
       {
         "id": "025",
-        "file": "data/strokes-pack-025.zip",
+        "file": "data/strokes-pack-025-67ad0ff9.zip",
         "chunks": 2,
-        "bytes": 133636
+        "bytes": 133636,
+        "hash": "67ad0ff9"
       },
       {
         "id": "026",
-        "file": "data/strokes-pack-026.zip",
+        "file": "data/strokes-pack-026-2a92043c.zip",
         "chunks": 2,
-        "bytes": 134666
+        "bytes": 134666,
+        "hash": "2a92043c"
       },
       {
         "id": "027",
-        "file": "data/strokes-pack-027.zip",
+        "file": "data/strokes-pack-027-9d127666.zip",
         "chunks": 2,
-        "bytes": 132463
+        "bytes": 132463,
+        "hash": "9d127666"
       },
       {
         "id": "028",
-        "file": "data/strokes-pack-028.zip",
+        "file": "data/strokes-pack-028-72db0f54.zip",
         "chunks": 2,
-        "bytes": 144782
+        "bytes": 144782,
+        "hash": "72db0f54"
       },
       {
         "id": "029",
-        "file": "data/strokes-pack-029.zip",
+        "file": "data/strokes-pack-029-b423b997.zip",
         "chunks": 2,
-        "bytes": 145822
+        "bytes": 145822,
+        "hash": "b423b997"
       },
       {
         "id": "030",
-        "file": "data/strokes-pack-030.zip",
+        "file": "data/strokes-pack-030-482e99c3.zip",
         "chunks": 2,
-        "bytes": 148834
+        "bytes": 148834,
+        "hash": "482e99c3"
       },
       {
         "id": "031",
-        "file": "data/strokes-pack-031.zip",
+        "file": "data/strokes-pack-031-9b717eaf.zip",
         "chunks": 2,
-        "bytes": 154606
+        "bytes": 154606,
+        "hash": "9b717eaf"
       },
       {
         "id": "032",
-        "file": "data/strokes-pack-032.zip",
+        "file": "data/strokes-pack-032-647dda78.zip",
         "chunks": 2,
-        "bytes": 160092
+        "bytes": 160092,
+        "hash": "647dda78"
       },
       {
         "id": "033",
-        "file": "data/strokes-pack-033.zip",
+        "file": "data/strokes-pack-033-de716d74.zip",
         "chunks": 2,
-        "bytes": 170464
+        "bytes": 170464,
+        "hash": "de716d74"
       },
       {
         "id": "034",
-        "file": "data/strokes-pack-034.zip",
+        "file": "data/strokes-pack-034-15c88e88.zip",
         "chunks": 2,
-        "bytes": 195800
+        "bytes": 195800,
+        "hash": "15c88e88"
       },
       {
         "id": "035",
-        "file": "data/strokes-pack-035.zip",
+        "file": "data/strokes-pack-035-35f16934.zip",
         "chunks": 2,
-        "bytes": 81285
+        "bytes": 81285,
+        "hash": "35f16934"
       },
       {
         "id": "036",
-        "file": "data/strokes-pack-036.zip",
+        "file": "data/strokes-pack-036-4b8ff436.zip",
         "chunks": 2,
-        "bytes": 103928
+        "bytes": 103928,
+        "hash": "4b8ff436"
       },
       {
         "id": "037",
-        "file": "data/strokes-pack-037.zip",
+        "file": "data/strokes-pack-037-88bba72a.zip",
         "chunks": 2,
-        "bytes": 125004
+        "bytes": 125004,
+        "hash": "88bba72a"
       },
       {
         "id": "038",
-        "file": "data/strokes-pack-038.zip",
+        "file": "data/strokes-pack-038-7ea240b4.zip",
         "chunks": 2,
-        "bytes": 113120
+        "bytes": 113120,
+        "hash": "7ea240b4"
       },
       {
         "id": "039",
-        "file": "data/strokes-pack-039.zip",
+        "file": "data/strokes-pack-039-abae144a.zip",
         "chunks": 2,
-        "bytes": 99476
+        "bytes": 99476,
+        "hash": "abae144a"
       },
       {
         "id": "040",
-        "file": "data/strokes-pack-040.zip",
+        "file": "data/strokes-pack-040-5396b9e2.zip",
         "chunks": 2,
-        "bytes": 134330
+        "bytes": 134330,
+        "hash": "5396b9e2"
       },
       {
         "id": "041",
-        "file": "data/strokes-pack-041.zip",
+        "file": "data/strokes-pack-041-b8b56fa3.zip",
         "chunks": 2,
-        "bytes": 150295
+        "bytes": 150295,
+        "hash": "b8b56fa3"
       },
       {
         "id": "042",
-        "file": "data/strokes-pack-042.zip",
+        "file": "data/strokes-pack-042-0a5281cc.zip",
         "chunks": 2,
-        "bytes": 124912
+        "bytes": 124912,
+        "hash": "0a5281cc"
       },
       {
         "id": "043",
-        "file": "data/strokes-pack-043.zip",
+        "file": "data/strokes-pack-043-4a9a2722.zip",
         "chunks": 2,
-        "bytes": 122390
+        "bytes": 122390,
+        "hash": "4a9a2722"
       },
       {
         "id": "044",
-        "file": "data/strokes-pack-044.zip",
+        "file": "data/strokes-pack-044-8c958360.zip",
         "chunks": 2,
-        "bytes": 140119
+        "bytes": 140119,
+        "hash": "8c958360"
       },
       {
         "id": "045",
-        "file": "data/strokes-pack-045.zip",
+        "file": "data/strokes-pack-045-a50ed459.zip",
         "chunks": 2,
-        "bytes": 131792
+        "bytes": 131792,
+        "hash": "a50ed459"
       },
       {
         "id": "046",
-        "file": "data/strokes-pack-046.zip",
+        "file": "data/strokes-pack-046-67af0e15.zip",
         "chunks": 2,
-        "bytes": 133947
+        "bytes": 133947,
+        "hash": "67af0e15"
       },
       {
         "id": "047",
-        "file": "data/strokes-pack-047.zip",
+        "file": "data/strokes-pack-047-82be1451.zip",
         "chunks": 2,
-        "bytes": 103446
+        "bytes": 103446,
+        "hash": "82be1451"
       },
       {
         "id": "048",
-        "file": "data/strokes-pack-048.zip",
+        "file": "data/strokes-pack-048-aa468bbe.zip",
         "chunks": 2,
-        "bytes": 153067
+        "bytes": 153067,
+        "hash": "aa468bbe"
       },
       {
         "id": "049",
-        "file": "data/strokes-pack-049.zip",
+        "file": "data/strokes-pack-049-af239c28.zip",
         "chunks": 2,
-        "bytes": 129675
+        "bytes": 129675,
+        "hash": "af239c28"
       },
       {
         "id": "050",
-        "file": "data/strokes-pack-050.zip",
+        "file": "data/strokes-pack-050-33f636ab.zip",
         "chunks": 2,
-        "bytes": 173958
+        "bytes": 173958,
+        "hash": "33f636ab"
       },
       {
         "id": "051",
-        "file": "data/strokes-pack-051.zip",
+        "file": "data/strokes-pack-051-76970b85.zip",
         "chunks": 2,
-        "bytes": 124877
+        "bytes": 124877,
+        "hash": "76970b85"
       },
       {
         "id": "052",
-        "file": "data/strokes-pack-052.zip",
+        "file": "data/strokes-pack-052-09434d16.zip",
         "chunks": 2,
-        "bytes": 117395
+        "bytes": 117395,
+        "hash": "09434d16"
       },
       {
         "id": "053",
-        "file": "data/strokes-pack-053.zip",
+        "file": "data/strokes-pack-053-a19e234d.zip",
         "chunks": 2,
-        "bytes": 160349
+        "bytes": 160349,
+        "hash": "a19e234d"
       },
       {
         "id": "054",
-        "file": "data/strokes-pack-054.zip",
+        "file": "data/strokes-pack-054-b2a0ba90.zip",
         "chunks": 2,
-        "bytes": 151015
+        "bytes": 151015,
+        "hash": "b2a0ba90"
       },
       {
         "id": "055",
-        "file": "data/strokes-pack-055.zip",
+        "file": "data/strokes-pack-055-c39cd8aa.zip",
         "chunks": 2,
-        "bytes": 89165
+        "bytes": 89165,
+        "hash": "c39cd8aa"
       },
       {
         "id": "056",
-        "file": "data/strokes-pack-056.zip",
+        "file": "data/strokes-pack-056-c0621eec.zip",
         "chunks": 2,
-        "bytes": 125570
+        "bytes": 125570,
+        "hash": "c0621eec"
       },
       {
         "id": "057",
-        "file": "data/strokes-pack-057.zip",
+        "file": "data/strokes-pack-057-d4535393.zip",
         "chunks": 2,
-        "bytes": 168068
+        "bytes": 168068,
+        "hash": "d4535393"
       },
       {
         "id": "058",
-        "file": "data/strokes-pack-058.zip",
+        "file": "data/strokes-pack-058-ca5e60ef.zip",
         "chunks": 2,
-        "bytes": 136468
+        "bytes": 136468,
+        "hash": "ca5e60ef"
       },
       {
         "id": "059",
-        "file": "data/strokes-pack-059.zip",
+        "file": "data/strokes-pack-059-881422ab.zip",
         "chunks": 2,
-        "bytes": 129275
+        "bytes": 129275,
+        "hash": "881422ab"
       },
       {
         "id": "060",
-        "file": "data/strokes-pack-060.zip",
+        "file": "data/strokes-pack-060-a8efb436.zip",
         "chunks": 2,
-        "bytes": 142020
+        "bytes": 142020,
+        "hash": "a8efb436"
       },
       {
         "id": "061",
-        "file": "data/strokes-pack-061.zip",
+        "file": "data/strokes-pack-061-fd911719.zip",
         "chunks": 2,
-        "bytes": 124509
+        "bytes": 124509,
+        "hash": "fd911719"
       },
       {
         "id": "062",
-        "file": "data/strokes-pack-062.zip",
+        "file": "data/strokes-pack-062-560dc136.zip",
         "chunks": 2,
-        "bytes": 150344
+        "bytes": 150344,
+        "hash": "560dc136"
       },
       {
         "id": "063",
-        "file": "data/strokes-pack-063.zip",
+        "file": "data/strokes-pack-063-b317fbde.zip",
         "chunks": 2,
-        "bytes": 145913
+        "bytes": 145913,
+        "hash": "b317fbde"
       },
       {
         "id": "064",
-        "file": "data/strokes-pack-064.zip",
+        "file": "data/strokes-pack-064-22303351.zip",
         "chunks": 2,
-        "bytes": 141792
+        "bytes": 141792,
+        "hash": "22303351"
       },
       {
         "id": "065",
-        "file": "data/strokes-pack-065.zip",
+        "file": "data/strokes-pack-065-954e6a57.zip",
         "chunks": 2,
-        "bytes": 146015
+        "bytes": 146015,
+        "hash": "954e6a57"
       },
       {
         "id": "066",
-        "file": "data/strokes-pack-066.zip",
+        "file": "data/strokes-pack-066-749c29b1.zip",
         "chunks": 2,
-        "bytes": 143738
+        "bytes": 143738,
+        "hash": "749c29b1"
       },
       {
         "id": "067",
-        "file": "data/strokes-pack-067.zip",
+        "file": "data/strokes-pack-067-ad4c24b0.zip",
         "chunks": 2,
-        "bytes": 165635
+        "bytes": 165635,
+        "hash": "ad4c24b0"
       },
       {
         "id": "068",
-        "file": "data/strokes-pack-068.zip",
+        "file": "data/strokes-pack-068-35e4841d.zip",
         "chunks": 2,
-        "bytes": 145423
+        "bytes": 145423,
+        "hash": "35e4841d"
       },
       {
         "id": "069",
-        "file": "data/strokes-pack-069.zip",
+        "file": "data/strokes-pack-069-ce1e7695.zip",
         "chunks": 2,
-        "bytes": 130171
+        "bytes": 130171,
+        "hash": "ce1e7695"
       },
       {
         "id": "070",
-        "file": "data/strokes-pack-070.zip",
+        "file": "data/strokes-pack-070-62f10d42.zip",
         "chunks": 2,
-        "bytes": 153068
+        "bytes": 153068,
+        "hash": "62f10d42"
       },
       {
         "id": "071",
-        "file": "data/strokes-pack-071.zip",
+        "file": "data/strokes-pack-071-60fe946e.zip",
         "chunks": 2,
-        "bytes": 99094
+        "bytes": 99094,
+        "hash": "60fe946e"
       },
       {
         "id": "072",
-        "file": "data/strokes-pack-072.zip",
+        "file": "data/strokes-pack-072-b37fa5ee.zip",
         "chunks": 2,
-        "bytes": 128653
+        "bytes": 128653,
+        "hash": "b37fa5ee"
       },
       {
         "id": "073",
-        "file": "data/strokes-pack-073.zip",
+        "file": "data/strokes-pack-073-4394b6fa.zip",
         "chunks": 2,
-        "bytes": 172140
+        "bytes": 172140,
+        "hash": "4394b6fa"
       },
       {
         "id": "074",
-        "file": "data/strokes-pack-074.zip",
+        "file": "data/strokes-pack-074-d9724d1f.zip",
         "chunks": 2,
-        "bytes": 146565
+        "bytes": 146565,
+        "hash": "d9724d1f"
       },
       {
         "id": "075",
-        "file": "data/strokes-pack-075.zip",
+        "file": "data/strokes-pack-075-b5dedd51.zip",
         "chunks": 2,
-        "bytes": 176068
+        "bytes": 176068,
+        "hash": "b5dedd51"
       },
       {
         "id": "076",
-        "file": "data/strokes-pack-076.zip",
+        "file": "data/strokes-pack-076-7a733b96.zip",
         "chunks": 2,
-        "bytes": 155234
+        "bytes": 155234,
+        "hash": "7a733b96"
       },
       {
         "id": "077",
-        "file": "data/strokes-pack-077.zip",
+        "file": "data/strokes-pack-077-a11e6d37.zip",
         "chunks": 2,
-        "bytes": 141112
+        "bytes": 141112,
+        "hash": "a11e6d37"
       },
       {
         "id": "078",
-        "file": "data/strokes-pack-078.zip",
+        "file": "data/strokes-pack-078-38efc4d2.zip",
         "chunks": 2,
-        "bytes": 142930
+        "bytes": 142930,
+        "hash": "38efc4d2"
       },
       {
         "id": "079",
-        "file": "data/strokes-pack-079.zip",
+        "file": "data/strokes-pack-079-c0b7fbc5.zip",
         "chunks": 2,
-        "bytes": 150903
+        "bytes": 150903,
+        "hash": "c0b7fbc5"
       },
       {
         "id": "080",
-        "file": "data/strokes-pack-080.zip",
+        "file": "data/strokes-pack-080-1debfbc2.zip",
         "chunks": 2,
-        "bytes": 154107
+        "bytes": 154107,
+        "hash": "1debfbc2"
       },
       {
         "id": "081",
-        "file": "data/strokes-pack-081.zip",
+        "file": "data/strokes-pack-081-2b21a071.zip",
         "chunks": 2,
-        "bytes": 171039
+        "bytes": 171039,
+        "hash": "2b21a071"
       },
       {
         "id": "082",
-        "file": "data/strokes-pack-082.zip",
+        "file": "data/strokes-pack-082-c2269dd3.zip",
         "chunks": 2,
-        "bytes": 127374
+        "bytes": 127374,
+        "hash": "c2269dd3"
       },
       {
         "id": "083",
-        "file": "data/strokes-pack-083.zip",
+        "file": "data/strokes-pack-083-190e6a0a.zip",
         "chunks": 2,
-        "bytes": 156018
+        "bytes": 156018,
+        "hash": "190e6a0a"
       },
       {
         "id": "084",
-        "file": "data/strokes-pack-084.zip",
+        "file": "data/strokes-pack-084-1eaef9e1.zip",
         "chunks": 2,
-        "bytes": 157722
+        "bytes": 157722,
+        "hash": "1eaef9e1"
       },
       {
         "id": "085",
-        "file": "data/strokes-pack-085.zip",
+        "file": "data/strokes-pack-085-dca58c1c.zip",
         "chunks": 2,
-        "bytes": 149808
+        "bytes": 149808,
+        "hash": "dca58c1c"
       },
       {
         "id": "086",
-        "file": "data/strokes-pack-086.zip",
+        "file": "data/strokes-pack-086-63c25a5e.zip",
         "chunks": 2,
-        "bytes": 149114
+        "bytes": 149114,
+        "hash": "63c25a5e"
       },
       {
         "id": "087",
-        "file": "data/strokes-pack-087.zip",
+        "file": "data/strokes-pack-087-de8a4075.zip",
         "chunks": 2,
-        "bytes": 125928
+        "bytes": 125928,
+        "hash": "de8a4075"
       },
       {
         "id": "088",
-        "file": "data/strokes-pack-088.zip",
+        "file": "data/strokes-pack-088-009bec1b.zip",
         "chunks": 2,
-        "bytes": 164088
+        "bytes": 164088,
+        "hash": "009bec1b"
       },
       {
         "id": "089",
-        "file": "data/strokes-pack-089.zip",
+        "file": "data/strokes-pack-089-fa5b8713.zip",
         "chunks": 2,
-        "bytes": 161612
+        "bytes": 161612,
+        "hash": "fa5b8713"
       },
       {
         "id": "090",
-        "file": "data/strokes-pack-090.zip",
+        "file": "data/strokes-pack-090-5f03819c.zip",
         "chunks": 2,
-        "bytes": 168912
+        "bytes": 168912,
+        "hash": "5f03819c"
       },
       {
         "id": "091",
-        "file": "data/strokes-pack-091.zip",
+        "file": "data/strokes-pack-091-5a071799.zip",
         "chunks": 2,
-        "bytes": 179770
+        "bytes": 179770,
+        "hash": "5a071799"
       },
       {
         "id": "092",
-        "file": "data/strokes-pack-092.zip",
+        "file": "data/strokes-pack-092-500ddbd7.zip",
         "chunks": 2,
-        "bytes": 185082
+        "bytes": 185082,
+        "hash": "500ddbd7"
       },
       {
         "id": "093",
-        "file": "data/strokes-pack-093.zip",
+        "file": "data/strokes-pack-093-f9b62362.zip",
         "chunks": 2,
-        "bytes": 188990
+        "bytes": 188990,
+        "hash": "f9b62362"
       },
       {
         "id": "094",
-        "file": "data/strokes-pack-094.zip",
+        "file": "data/strokes-pack-094-26ab64f5.zip",
         "chunks": 2,
-        "bytes": 174462
+        "bytes": 174462,
+        "hash": "26ab64f5"
       },
       {
         "id": "095",
-        "file": "data/strokes-pack-095.zip",
+        "file": "data/strokes-pack-095-b3abcbe4.zip",
         "chunks": 2,
-        "bytes": 135261
+        "bytes": 135261,
+        "hash": "b3abcbe4"
       }
     ]
   }

@@ -32,11 +32,11 @@ for (const file of [
 ]) {
   fingerprint.update(await readFile(path.join(root, file)));
 }
-for (const file of (await readdir(path.join(root, "data"))).filter((file) => /^strokes-pack-\d+\.zip$/.test(file)).sort()) {
+for (const file of (await readdir(path.join(root, "data"))).filter((file) => /^strokes-pack-\d+(?:-[a-f0-9]+)?\.zip$/.test(file)).sort()) {
   fingerprint.update(await readFile(path.join(root, "data", file)));
 }
 const version = `v${packageVersion}-${gitCommit}-${fingerprint.digest("hex").slice(0, 10)}`;
-const cdnBase = gitCommit !== "unknown" ? `https://cdn.jsdelivr.net/gh/rickytan/HanZiFun@${gitCommit}` : "";
+const cdnBase = "https://cdn.jsdelivr.net/gh/rickytan/HanZiFun@main";
 
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });

@@ -56,6 +56,7 @@ const DEFAULT_SETTINGS = {
   traceMode: "full",
   traceColor: "#d8dde1",
   traceOpacity: 1,
+  traceScale: 1,
   gridFrameColor: "#aebac2",
   gridCrossColor: "#c9d2d8",
   gridDiagonalColor: "#d8c6c6",
@@ -65,7 +66,7 @@ const DEFAULT_SETTINGS = {
 const NUMBER_FIELDS = new Set([
   "cellSizeMm", "marginMm", "rowsPerPage", "cellsPerRow",
   "rowsPerCharacter", "cellGapMm", "rowGapMm", "blankPageCount",
-  "traceOpacity", "zoom",
+  "traceOpacity", "traceScale", "zoom",
 ]);
 
 const TEMPLATE_LABELS = {
@@ -306,14 +307,19 @@ function makeCharacterSvg(character, options = {}) {
     const opacity = options.trace ? settings.traceOpacity : 1;
     const colorStyle = options.trace ? ` style="--trace-color:${settingColor("traceColor")}"` : "";
     const glyphClass = options.trace ? "fallback-glyph trace-glyph" : "fallback-glyph";
-    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="${glyphClass}" x="512" y="512" opacity="${opacity}"${colorStyle}>${escapeHtml(character)}</text></svg>`;
+    const traceScale = options.trace ? (settings.traceScale ?? 1) : 1;
+    const textTransform = traceScale !== 1 ? ` transform="translate(512 512) scale(${traceScale}) translate(-512 -512)"` : "";
+    return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="${glyphClass}" x="512" y="512" opacity="${opacity}"${colorStyle}${textTransform}>${escapeHtml(character)}</text></svg>`;
   }
   const paths = renderStrokePaths(data, options);
   const annotations = options.annotate ? renderAnnotations(data) : "";
   const dataAttrs = [`data-ch="${escapeHtml(character)}"`];
   if (options.trace) dataAttrs.push('data-trace="1"');
   if (options.mode === "step") dataAttrs.push(`data-step="${options.step ?? data.strokes.length - 1}"`);
-  return `<svg class="hanzi-cell" ${dataAttrs.join(" ")} viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 字练习格">${grid}<g transform="translate(0 ${BASELINE}) scale(1 -1)">${paths}</g>${annotations}</svg>`;
+  const traceScale = options.trace ? (settings.traceScale ?? 1) : 1;
+  const scaleWrap = traceScale !== 1 ? `<g transform="translate(512 512) scale(${traceScale}) translate(-512 -512)">` : "";
+  const scaleClose = traceScale !== 1 ? "</g>" : "";
+  return `<svg class="hanzi-cell" ${dataAttrs.join(" ")} viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 字练习格">${grid}${scaleWrap}<g transform="translate(0 ${BASELINE}) scale(1 -1)">${paths}</g>${scaleClose}${annotations}</svg>`;
 }
 
 function makeCopyCell(character, options = {}) {
@@ -321,7 +327,9 @@ function makeCopyCell(character, options = {}) {
     return makeCharacterSvg(character, { ...options, trace: true, gridStyle: gridStyle() });
   }
   const grid = makeGrid(gridStyle(), options);
-  return `<svg class="hanzi-cell copy-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 临摹格">${grid}<text class="copy-glyph trace-glyph" x="512" y="512" opacity="${settings.traceOpacity}" style="--trace-color:${settingColor("traceColor")}">${escapeHtml(character)}</text></svg>`;
+  const traceScale = settings.traceScale ?? 1;
+  const textTransform = traceScale !== 1 ? ` transform="translate(512 512) scale(${traceScale}) translate(-512 -512)"` : "";
+  return `<svg class="hanzi-cell copy-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 临摹格">${grid}<text class="copy-glyph trace-glyph" x="512" y="512" opacity="${settings.traceOpacity}" style="--trace-color:${settingColor("traceColor")}"${textTransform}>${escapeHtml(character)}</text></svg>`;
 }
 
 function pinyinFor(character) {
@@ -1049,6 +1057,7 @@ function applySettingsToControls() {
 
 function updateOutputs() {
   document.querySelector("#traceOpacityOutput").value = `${Math.round(settings.traceOpacity * 100)}%`;
+  document.querySelector("#traceScaleOutput").value = `${Math.round(settings.traceScale * 100)}%`;
   document.querySelector("#zoomOutput").value = `${settings.zoom}%`;
   updateSteppers();
 }
@@ -1464,8 +1473,17 @@ function drawCellGlyph(pdf, source, square) {
   const character = source.dataset.ch;
   const trace = source.dataset.trace === "1";
   const step = source.dataset.step;
-  const scale = square.width / VIEWBOX_SIZE;
-  const matrix = pdf.Matrix(scale, 0, 0, scale, square.x, square.y);
+  const traceScale = trace ? (settings.traceScale ?? 1) : 1;
+  // 缩小 trace glyph 的渲染区域，保持居中
+  const scaledSize = square.width * traceScale;
+  const scaledSquare = {
+    x: square.x + (square.width - scaledSize) / 2,
+    y: square.y + (square.height - scaledSize) / 2,
+    width: scaledSize,
+    height: scaledSize
+  };
+  const scale = scaledSize / VIEWBOX_SIZE;
+  const matrix = pdf.Matrix(scale, 0, 0, scale, scaledSquare.x, scaledSquare.y);
   if (step !== undefined) {
     const data = window.HANZI_STROKES?.[character];
     if (!data) return;
@@ -1843,11 +1861,12 @@ function init() {
     localStorage.setItem("hanzifun.version", BUILD_VERSION);
   }
   if (CDN_BASE) {
+    const firstPackFile = window.HANZI_PACK_INFO?.packs?.[0]?.file || "data/strokes-pack-000.zip";
     const link = document.createElement("link");
     link.rel = "preload";
     link.as = "fetch";
     link.crossOrigin = "anonymous";
-    link.href = `${CDN_BASE}/data/strokes-pack-000.zip`;
+    link.href = `${CDN_BASE}/${firstPackFile}`;
     document.head.append(link);
   }
   applySettingsToControls();

@@ -1,4 +1,5 @@
 import { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { BlobWriter, TextReader, ZipWriter, configure } from "@zip.js/zip.js";
@@ -41,7 +42,7 @@ async function removeOldArchives() {
   const files = await readdir(dataDir);
   await Promise.all(
     files
-      .filter((file) => /^strokes-(?:\d+|pack-\d+)\.zip$/.test(file))
+      .filter((file) => /^strokes-(?:\d+|pack-\d+(?:-[a-f0-9]+)?)\.zip$/.test(file))
       .map((file) => unlink(path.join(dataDir, file)))
   );
 }
@@ -89,10 +90,11 @@ async function buildFullData() {
     if (!zipWriter) return;
     const archive = await zipWriter.close();
     const archiveBuffer = Buffer.from(await archive.arrayBuffer());
+    const hash = createHash("sha256").update(archiveBuffer).digest("hex").slice(0, 8);
     const packId = String(packs.length).padStart(3, "0");
-    const file = `data/strokes-pack-${packId}.zip`;
-    await writeFile(path.join(dataDir, `strokes-pack-${packId}.zip`), archiveBuffer);
-    packs.push({ id: packId, file, chunks: packChunks, bytes: archiveBuffer.length });
+    const file = `data/strokes-pack-${packId}-${hash}.zip`;
+    await writeFile(path.join(dataDir, `strokes-pack-${packId}-${hash}.zip`), archiveBuffer);
+    packs.push({ id: packId, file, chunks: packChunks, bytes: archiveBuffer.length, hash });
     zipWriter = null;
     packChunks = 0;
   }
