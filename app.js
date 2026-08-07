@@ -1446,16 +1446,15 @@ function ensureGlyphForm(pdf, character) {
 // Progressive step form: strokes 0..step. In trace mode the form is
 // color-agnostic (caller sets the trace color). In step mode the done/current
 // distinction is baked in so the current stroke stays highlighted.
-function ensureStepForm(pdf, character, step, trace) {
-  const key = `${character}@${step}@${trace ? 1 : 0}`;
+// 单笔 Form：每笔一个 color-agnostic Form，渲染时叠加 doFormObject。
+// 相比每步建含累加笔画的 Form（路径 O(N²) 重复），路径数据降到 O(N)，大幅减小 PDF 体积。
+function ensureStrokeForm(pdf, character, index) {
+  const key = `${character}#s${index}`;
   if (stepFormCache.has(key)) return true;
   const data = window.HANZI_STROKES?.[character];
-  if (!data) return false;
+  if (!data || index >= data.strokes.length) return false;
   pdf.beginFormObject(0, 0, VIEWBOX_SIZE, VIEWBOX_SIZE, pdf.Matrix(1, 0, 0, 1, 0, 0));
-  for (let index = 0; index <= step && index < data.strokes.length; index++) {
-    if (!trace) setPdfColor(pdf, "setFillColor", index < step ? STROKE_DONE_COLOR : STROKE_ACTIVE_COLOR);
-    drawPdfPath(pdf, pdfPath(data.strokes[index], FLIP_MATRIX, UNIT_BOX), "F");
-  }
+  drawPdfPath(pdf, pdfPath(data.strokes[index], FLIP_MATRIX, UNIT_BOX), "F");
   pdf.endFormObject(key);
   stepFormCache.set(key, true);
   return true;
@@ -1468,9 +1467,20 @@ function drawCellGlyph(pdf, source, square) {
   const scale = square.width / VIEWBOX_SIZE;
   const matrix = pdf.Matrix(scale, 0, 0, scale, square.x, square.y);
   if (step !== undefined) {
-    if (trace) setPdfColor(pdf, "setFillColor", settingColor("traceColor"), settings.traceOpacity);
-    if (!ensureStepForm(pdf, character, Number(step), trace)) return;
-    pdf.doFormObject(`${character}@${step}@${trace ? 1 : 0}`, matrix);
+    const data = window.HANZI_STROKES?.[character];
+    if (!data) return;
+    const n = Number(step);
+    const doneEnd = Math.min(n, data.strokes.length);
+    setPdfColor(pdf, "setFillColor", trace ? settingColor("traceColor") : STROKE_DONE_COLOR, trace ? settings.traceOpacity : 1);
+    for (let i = 0; i < doneEnd; i++) {
+      if (!ensureStrokeForm(pdf, character, i)) return;
+      pdf.doFormObject(`${character}#s${i}`, matrix);
+    }
+    if (n < data.strokes.length) {
+      if (!trace) setPdfColor(pdf, "setFillColor", STROKE_ACTIVE_COLOR);
+      if (!ensureStrokeForm(pdf, character, n)) return;
+      pdf.doFormObject(`${character}#s${n}`, matrix);
+    }
   } else {
     setPdfColor(pdf, "setFillColor", trace ? settingColor("traceColor") : STROKE_ACTIVE_COLOR, trace ? settings.traceOpacity : 1);
     if (!ensureGlyphForm(pdf, character)) return;
