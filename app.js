@@ -198,7 +198,14 @@ function extractCharacters(text, dedupe) {
 }
 
 function extractPageCharacters() {
-  return extractCharacters(els.pages.textContent || "", true);
+  const svgChars = [...els.pages.querySelectorAll("svg.hanzi-cell[data-ch]")]
+    .map((svg) => svg.dataset.ch)
+    .filter(Boolean);
+  const textChars = extractCharacters(els.pages.textContent || "", true);
+  const fallbackChars = kaiCharSet
+    ? textChars.filter((ch) => !kaiCharSet.has(ch))
+    : [];
+  return [...new Set([...svgChars, ...fallbackChars])];
 }
 
 function extractCopyItems(text) {
@@ -1115,17 +1122,8 @@ async function preparePdfPages() {
   const existingPageChars = extractPageCharacters().filter((character) => !unsupportedCharacters([character]).length);
   pdfProtectedCharacters = existingPageChars;
   const allCharacters = [...new Set([...printable, ...existingPageChars])];
-  console.log("[PDF DEBUG] printable:", printable.join(""));
-  console.log("[PDF DEBUG] existingPageChars:", existingPageChars.join(""));
-  console.log("[PDF DEBUG] allCharacters:", allCharacters.join(""));
-  const missingBefore = allCharacters.filter((ch) => !window.HANZI_STROKES?.[ch]);
-  console.log("[PDF DEBUG] missing before ensureCharacterData:", missingBefore.join(""), `(${missingBefore.length} chars)`);
-  console.log("[PDF DEBUG] loadedChunks size:", loadedChunks.size, "activeChunkIds:", [...activeChunkIds]);
   reportPdfProgress("准备练习字…");
   await ensureCharacterData(allCharacters);
-  const missingAfter = allCharacters.filter((ch) => !window.HANZI_STROKES?.[ch]);
-  console.log("[PDF DEBUG] missing after ensureCharacterData:", missingAfter.join(""), `(${missingAfter.length} chars)`);
-  console.log("[PDF DEBUG] loadedChunks size after:", loadedChunks.size, "activeChunkIds after:", [...activeChunkIds]);
   if (document.fonts?.ready) await document.fonts.ready;
   render();
   await nextPaint();
@@ -1133,10 +1131,6 @@ async function preparePdfPages() {
   const supportedPageCharacters = pageCharacters.filter((character) => !unsupportedCharacters([character]).length);
   pdfProtectedCharacters = supportedPageCharacters;
   const pdfCharacters = [...new Set([...printable, ...supportedPageCharacters])];
-  const missingRender = pdfCharacters.filter((ch) => !window.HANZI_STROKES?.[ch]);
-  console.log("[PDF DEBUG] pageCharacters after render:", supportedPageCharacters.join(""));
-  console.log("[PDF DEBUG] missing after render:", missingRender.join(""), `(${missingRender.length} chars)`);
-  console.log("[PDF DEBUG] loadedChunks size after render:", loadedChunks.size);
   if (pdfCharacters.some((character) => !window.HANZI_STROKES?.[character])) {
     reportPdfProgress("准备页眉文字…");
     await ensureCharacterData(pdfCharacters);
@@ -1599,6 +1593,7 @@ function drawHtmlText(pdf, page, metrics) {
 }
 
 async function buildPdfDocument() {
+  await loadKaiCharSet();
   await preparePdfPages();
   reportPdfProgress("载入 PDF 组件…");
   await nextPaint();
@@ -1658,6 +1653,13 @@ function canSharePdfFile(file) {
   }
 }
 
+function isMobileDevice() {
+  const ua = navigator.userAgent || "";
+  return /Android|iPhone|iPad|iPod/u.test(ua)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    || window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+}
+
 async function exportPdf() {
   const finish = beginPdfOperation(els.exportPdfBtn);
   if (!finish) return;
@@ -1665,11 +1667,11 @@ async function exportPdf() {
     const { pdf, pageCount } = await buildPdfDocument();
     reportPdfProgress("保存 PDF…");
     await nextPaint();
-    const blob = pdf.output("blob");
-    const file = new File([blob], exportFilename(), { type: "application/pdf" });
 
-    // On mobile, try Web Share API first (lets user save to Files, AirDrop, etc.)
-    if (canSharePdfFile(file)) {
+    // Mobile: try Web Share API (save to Files, AirDrop, etc.); Desktop: direct download
+    if (isMobileDevice() && canSharePdfFile(new File([pdf.output("blob")], "p.pdf", { type: "application/pdf" }))) {
+      const blob = pdf.output("blob");
+      const file = new File([blob], exportFilename(), { type: "application/pdf" });
       try {
         await navigator.share({ title: APP_TITLE, text: "汉字练习本 PDF", files: [file] });
         showExportStatus(`已生成 ${pageCount} 页 PDF`);
