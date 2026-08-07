@@ -142,7 +142,6 @@ function fetchWithTimeout(url, options = {}, timeout = PACK_FETCH_TIMEOUT_MS) {
     .finally(() => clearTimeout(timer));
 }
 let activePdfProgress = null;
-let preparedMobilePdf = null;
 let pdfProtectedCharacters = [];
 
 function loadSettings() {
@@ -910,23 +909,6 @@ function prefetchUnusedStrokePacks() {
   }
 }
 
-function prefetchPdfRuntime() {
-  if (document.head.querySelector('link[rel="prefetch"][href="vendor/jspdf.umd.min.js"]')) return;
-  for (const [href, as] of [
-    ["vendor/jspdf.umd.min.js", "script"],
-    ["vendor/hb-subset.wasm", "fetch"],
-    ["vendor/fonts/kai.ttf", "fetch"],
-    ["vendor/fonts/kai-chars.json", "fetch"],
-  ]) {
-    const link = document.createElement("link");
-    link.rel = "prefetch";
-    link.as = as;
-    link.href = href;
-    link.fetchPriority = "low";
-    document.head.append(link);
-  }
-}
-
 function scheduleStrokePackPrefetch(delay = 0) {
   if (strokePrefetchScheduled) return;
   strokePrefetchScheduled = true;
@@ -1022,7 +1004,6 @@ function render() {
 
 function scheduleRender(shouldSave = true) {
   if (shouldSave) {
-    preparedMobilePdf = null;
     saveSettings();
   }
   cancelAnimationFrame(renderFrame);
@@ -1130,8 +1111,21 @@ async function preparePdfPages() {
     : extractCharacters(settings.inputText, settings.template === "copy" ? false : settings.dedupe);
   const unsupported = unsupportedCharacters(inputCharacters);
   const printable = inputCharacters.filter((character) => !unsupported.includes(character));
+  // 从现有 DOM 提取页面字符（页眉/标题字等），防止 LRU 逐出
+  const existingPageChars = extractPageCharacters().filter((character) => !unsupportedCharacters([character]).length);
+  pdfProtectedCharacters = existingPageChars;
+  const allCharacters = [...new Set([...printable, ...existingPageChars])];
+  console.log("[PDF DEBUG] printable:", printable.join(""));
+  console.log("[PDF DEBUG] existingPageChars:", existingPageChars.join(""));
+  console.log("[PDF DEBUG] allCharacters:", allCharacters.join(""));
+  const missingBefore = allCharacters.filter((ch) => !window.HANZI_STROKES?.[ch]);
+  console.log("[PDF DEBUG] missing before ensureCharacterData:", missingBefore.join(""), `(${missingBefore.length} chars)`);
+  console.log("[PDF DEBUG] loadedChunks size:", loadedChunks.size, "activeChunkIds:", [...activeChunkIds]);
   reportPdfProgress("准备练习字…");
-  await ensureCharacterData(printable);
+  await ensureCharacterData(allCharacters);
+  const missingAfter = allCharacters.filter((ch) => !window.HANZI_STROKES?.[ch]);
+  console.log("[PDF DEBUG] missing after ensureCharacterData:", missingAfter.join(""), `(${missingAfter.length} chars)`);
+  console.log("[PDF DEBUG] loadedChunks size after:", loadedChunks.size, "activeChunkIds after:", [...activeChunkIds]);
   if (document.fonts?.ready) await document.fonts.ready;
   render();
   await nextPaint();
@@ -1139,6 +1133,10 @@ async function preparePdfPages() {
   const supportedPageCharacters = pageCharacters.filter((character) => !unsupportedCharacters([character]).length);
   pdfProtectedCharacters = supportedPageCharacters;
   const pdfCharacters = [...new Set([...printable, ...supportedPageCharacters])];
+  const missingRender = pdfCharacters.filter((ch) => !window.HANZI_STROKES?.[ch]);
+  console.log("[PDF DEBUG] pageCharacters after render:", supportedPageCharacters.join(""));
+  console.log("[PDF DEBUG] missing after render:", missingRender.join(""), `(${missingRender.length} chars)`);
+  console.log("[PDF DEBUG] loadedChunks size after render:", loadedChunks.size);
   if (pdfCharacters.some((character) => !window.HANZI_STROKES?.[character])) {
     reportPdfProgress("准备页眉文字…");
     await ensureCharacterData(pdfCharacters);
@@ -1651,6 +1649,15 @@ async function buildPdfDocument() {
   return { pdf, pageCount: pages.length };
 }
 
+function canSharePdfFile(file) {
+  if (typeof navigator.share !== "function" || typeof navigator.canShare !== "function") return false;
+  try {
+    return navigator.canShare({ files: [file] });
+  } catch {
+    return false;
+  }
+}
+
 async function exportPdf() {
   const finish = beginPdfOperation(els.exportPdfBtn);
   if (!finish) return;
@@ -1658,6 +1665,21 @@ async function exportPdf() {
     const { pdf, pageCount } = await buildPdfDocument();
     reportPdfProgress("保存 PDF…");
     await nextPaint();
+    const blob = pdf.output("blob");
+    const file = new File([blob], exportFilename(), { type: "application/pdf" });
+
+    // On mobile, try Web Share API first (lets user save to Files, AirDrop, etc.)
+    if (canSharePdfFile(file)) {
+      try {
+        await navigator.share({ title: APP_TITLE, text: "汉字练习本 PDF", files: [file] });
+        showExportStatus(`已生成 ${pageCount} 页 PDF`);
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+        // Fall through to download
+      }
+    }
+
     pdf.save(exportFilename());
     showExportStatus(`已生成 ${pageCount} 页 PDF`);
   } catch (error) {
@@ -1668,117 +1690,11 @@ async function exportPdf() {
   }
 }
 
-function isMobilePrintContext() {
-  const userAgent = navigator.userAgent || "";
-  const appleTouchDevice = /iPhone|iPad|iPod/u.test(userAgent)
-    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  return window.matchMedia("(display-mode: standalone)").matches
-    || navigator.standalone === true
-    || /Android/u.test(userAgent)
-    || appleTouchDevice
-    || window.innerWidth <= 600
-    || (window.matchMedia("(hover: none) and (pointer: coarse)").matches && window.innerWidth <= 1024);
-}
-
-function canSharePdfFile(file) {
-  if (typeof navigator.share !== "function" || typeof navigator.canShare !== "function") return false;
-  try {
-    return navigator.canShare({ files: [file] });
-  } catch {
-    return false;
-  }
-}
-
-function reservePdfPreviewWindow() {
-  const previewWindow = window.open("", "_blank");
-  if (!previewWindow) return null;
-  previewWindow.document.title = "汉字 Fun - 正在生成 PDF";
-  previewWindow.document.body.textContent = "正在生成可打印 PDF…";
-  previewWindow.document.body.style.cssText = "margin:0;min-height:100vh;display:grid;place-items:center;font:16px system-ui;color:#41515c;background:#f6f8f9";
-  return previewWindow;
-}
-
-function openPdfPreview(blob, previewWindow) {
-  const url = URL.createObjectURL(blob);
-  if (previewWindow && !previewWindow.closed) {
-    previewWindow.location.replace(url);
-  } else {
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = exportFilename();
-    link.click();
-  }
-  setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
-}
-
-async function sharePdfForPrinting(file) {
-  await navigator.share({
-    title: APP_TITLE,
-    text: "汉字练习本 PDF",
-    files: [file],
-  });
-}
-
-async function printWorksheet() {
-  if (!isMobilePrintContext()) {
-    els.printNote.textContent = "打印时请选择与预览一致的纸张，并使用“实际大小 / 100%”，关闭浏览器页眉页脚。";
-    els.printNote.hidden = false;
-    setTimeout(() => { els.printNote.hidden = true; }, 5000);
-    window.print();
-    return;
-  }
-
-  if (preparedMobilePdf && canSharePdfFile(preparedMobilePdf)) {
-    try {
-      await sharePdfForPrinting(preparedMobilePdf);
-      showExportStatus("已打开系统分享，请选择“打印”");
-    } catch (error) {
-      if (error?.name !== "AbortError") showExportStatus("无法打开系统分享，请使用“导出 PDF”", true);
-    }
-    return;
-  }
-
-  const probeFile = new File([""], "hanzifun.pdf", { type: "application/pdf" });
-  const shareSupported = canSharePdfFile(probeFile);
-  const previewWindow = shareSupported ? null : reservePdfPreviewWindow();
-  const finish = beginPdfOperation(els.printBtn);
-  if (!finish) {
-    previewWindow?.close();
-    return;
-  }
-
-  try {
-    const { pdf, pageCount } = await buildPdfDocument();
-    reportPdfProgress("准备打印…");
-    const blob = pdf.output("blob");
-    const file = new File([blob], exportFilename(), { type: "application/pdf" });
-    preparedMobilePdf = file;
-
-    if (!shareSupported) {
-      openPdfPreview(blob, previewWindow);
-      showExportStatus(`已打开 ${pageCount} 页 PDF，请从系统菜单选择打印`);
-      return;
-    }
-
-    try {
-      await sharePdfForPrinting(file);
-      showExportStatus("已打开系统分享，请选择“打印”");
-    } catch (error) {
-      if (error?.name === "NotAllowedError") {
-        showExportStatus("PDF 已准备好，请再点一次“打印”打开系统分享");
-      } else if (error?.name !== "AbortError") {
-        console.error(error);
-        openPdfPreview(blob, null);
-        showExportStatus("系统分享不可用，PDF 已保存到本机", true);
-      }
-    }
-  } catch (error) {
-    previewWindow?.close();
-    console.error(error);
-    showExportStatus(error?.message || "打印 PDF 生成失败，请重试", true);
-  } finally {
-    finish();
-  }
+function printWorksheet() {
+  els.printNote.textContent = "打印时请选择与预览一致的纸张，并使用“实际大小 / 100%”，关闭浏览器页眉页脚。";
+  els.printNote.hidden = false;
+  setTimeout(() => { els.printNote.hidden = true; }, 5000);
+  window.print();
 }
 
 function updateHeaderFieldVisibility() {
@@ -1931,7 +1847,9 @@ function init() {
   window.addEventListener("load", () => {
     const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     if (navigator.onLine && !connection?.saveData && !/(^|-)2g$/.test(connection?.effectiveType || "")) {
-      prefetchPdfRuntime();
+      loadHbSubsetWasm().catch(() => {});
+      loadKaiFontBuffer().catch(() => {});
+      loadKaiCharSet().catch(() => {});
     }
   });
   registerPwa();

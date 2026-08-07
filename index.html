@@ -52,6 +52,10 @@
         "image": "https://rickytan.cn/HanZiFun/icons/icon-512.png"
       }
     </script>
+    <script src="vendor/jspdf.umd.min.js" defer></script>
+    <link rel="preload" href="vendor/hb-subset.wasm" as="fetch" crossorigin>
+    <link rel="preload" href="vendor/fonts/kai.ttf" as="fetch" crossorigin>
+    <link rel="preload" href="vendor/fonts/kai-chars.json" as="fetch" crossorigin>
   </head>
   <body>
     <header class="app-bar">
@@ -253,14 +257,16 @@
 
         <section class="control-section trace-style space-y-4">
           <h2>描红样式</h2>
-          <label class="field color-field flex flex-col gap-1.5">
-            <span>描红颜色</span>
-            <input id="traceColor" data-setting="traceColor" type="color">
-          </label>
-          <label class="field flex flex-col gap-1.5">
-            <span class="range-label">描红透明度 <output id="traceOpacityOutput"></output></span>
-            <input id="traceOpacity" data-setting="traceOpacity" type="range" min="0.1" max="1" step="0.01">
-          </label>
+          <div class="grid grid-cols-2 gap-x-3">
+            <label class="field color-field flex flex-col gap-1.5">
+              <span>描红颜色</span>
+              <input id="traceColor" data-setting="traceColor" type="color">
+            </label>
+            <label class="field flex flex-col gap-1.5">
+              <span class="range-label">描红透明度 <output id="traceOpacityOutput"></output></span>
+              <input id="traceOpacity" data-setting="traceOpacity" type="range" min="0.1" max="1" step="0.01">
+            </label>
+          </div>
           <label class="field flex flex-col gap-1.5">
             <span class="range-label">描红字大小 <output id="traceScaleOutput"></output></span>
             <input id="traceScale" data-setting="traceScale" type="range" min="0.5" max="1" step="0.05">
