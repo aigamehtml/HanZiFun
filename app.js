@@ -1,3 +1,5 @@
+"use strict";
+(function () {
 const SETTINGS_KEY = "hanzifun.settings";
 const SETTINGS_VERSION = 8;
 const APP_TITLE = "汉字 Fun";
@@ -299,8 +301,9 @@ function renderStrokePaths(data, options) {
   }).join("");
 }
 
-function renderAnnotations(data) {
+function renderAnnotations(data, annotateStep) {
   return data.medians.map((median, index) => {
+    if (annotateStep !== undefined && index !== annotateStep) return "";
     const start = pointToSvg(median[0]);
     const directionPoint = pointToSvg(median[Math.min(Math.max(1, Math.floor(median.length * 0.18)), median.length - 1)]);
     const markerId = `arrow-${markerSequence += 1}`;
@@ -333,7 +336,7 @@ function makeCharacterSvg(character, options = {}) {
     return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="${glyphClass}" x="512" y="512" opacity="${opacity}"${colorStyle}${textTransform}>${escapeHtml(character)}</text></svg>`;
   }
   const paths = renderStrokePaths(data, options);
-  const annotations = options.annotate ? renderAnnotations(data) : "";
+  const annotations = options.annotate ? renderAnnotations(data, options.annotateStep) : "";
   const dataAttrs = [`data-ch="${escapeHtml(character)}"`];
   if (options.trace) dataAttrs.push('data-trace="1"');
   if (options.mode === "step") dataAttrs.push(`data-step="${options.step ?? data.strokes.length - 1}"`);
@@ -342,7 +345,7 @@ function makeCharacterSvg(character, options = {}) {
   const traceScale = (options.trace || options.applyTraceScale) && settings.template !== "stroke" ? (settings.traceScale ?? 1) : 1;
   const scaleWrap = traceScale !== 1 ? `<g transform="translate(512 512) scale(${traceScale}) translate(-512 -512)">` : "";
   const scaleClose = traceScale !== 1 ? "</g>" : "";
-  return `<svg class="hanzi-cell" ${dataAttrs.join(" ")} viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 字练习格">${grid}${scaleWrap}<g transform="translate(0 ${BASELINE}) scale(1 -1)">${paths}</g>${scaleClose}${annotations}</svg>`;
+  return `<svg class="hanzi-cell" ${dataAttrs.join(" ")} viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 字练习格">${grid}${scaleWrap}<g transform="translate(0 ${BASELINE}) scale(1 -1)">${paths}</g>${annotations}${scaleClose}</svg>`;
 }
 
 function makeCopyCell(character, options = {}) {
@@ -387,10 +390,13 @@ function makeProgressiveCells(character, cellCount, startStep, hasLeadingCell, j
     if (settings.traceMode === "progressive-blank" && step >= strokeCount) {
       return makeCharacterSvg("", { blank: true, joinLeft, joinRight, joinTop, joinBottom });
     }
+    const clampedStep = Math.min(step, strokeCount - 1);
     return makeCharacterSvg(character, {
       trace: true,
       mode: "step",
-      step: Math.min(step, strokeCount - 1),
+      step: clampedStep,
+      annotate: step < strokeCount,
+      annotateStep: clampedStep,
       joinLeft,
       joinRight,
       joinTop,
@@ -1975,3 +1981,4 @@ function init() {
 }
 
 init();
+})();
