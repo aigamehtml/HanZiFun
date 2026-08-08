@@ -58,6 +58,7 @@ const DEFAULT_SETTINGS = {
   traceOpacity: 1,
   traceScale: 1,
   strokeActiveColor: "#202b33",
+  guideColor: "#202b33",
   gridFrameColor: "#aebac2",
   gridCrossColor: "#c9d2d8",
   gridDiagonalColor: "#d8c6c6",
@@ -280,6 +281,7 @@ function renderStrokePaths(data, options) {
     let className = "stroke";
     if (mode === "step" && index < step) className = "done";
     if (options.trace) className = "trace";
+    if (options.guide) className = "guide";
     const opacity = options.trace ? settings.traceOpacity : 1;
     const colorStyle = options.trace ? ` style="--trace-color:${settingColor("traceColor")}"` : "";
     return `<path class="${className}" d="${path}" opacity="${opacity}"${colorStyle}></path>`;
@@ -325,6 +327,7 @@ function makeCharacterSvg(character, options = {}) {
   if (options.trace) dataAttrs.push('data-trace="1"');
   if (options.mode === "step") dataAttrs.push(`data-step="${options.step ?? data.strokes.length - 1}"`);
   if (options.applyTraceScale) dataAttrs.push('data-trace-scale="1"');
+  if (options.guide) dataAttrs.push('data-guide="1"');
   const traceScale = (options.trace || options.applyTraceScale) && settings.template !== "stroke" ? (settings.traceScale ?? 1) : 1;
   const scaleWrap = traceScale !== 1 ? `<g transform="translate(512 512) scale(${traceScale}) translate(-512 -512)">` : "";
   const scaleClose = traceScale !== 1 ? "</g>" : "";
@@ -390,10 +393,10 @@ function makeStandardRow(row, maximumCells) {
   if (PROGRESSIVE_TRACE_MODES.has(settings.traceMode)) {
     const isFirstRow = rowIndex === 0;
     const startStep = isFirstRow ? 0 : maximumCells - 1 + (rowIndex - 1) * maximumCells;
-    const leadingCell = isFirstRow ? makeCharacterSvg(character, { applyTraceScale: true }) : "";
+    const leadingCell = isFirstRow ? makeCharacterSvg(character, { applyTraceScale: true, guide: true }) : "";
     cells = `${leadingCell}${makeProgressiveCells(character, maximumCells - (isFirstRow ? 1 : 0), startStep, isFirstRow)}`;
   } else {
-    cells = `${makeCharacterSvg(character, { applyTraceScale: true })}${makePracticeCells(character, maximumCells - 1)}`;
+    cells = `${makeCharacterSvg(character, { applyTraceScale: true, guide: true })}${makePracticeCells(character, maximumCells - 1)}`;
   }
   return `<article class="${rowClass}" ${rowStyle}>
     ${guide}<div class="exercise-strip">${cells}</div>
@@ -448,7 +451,7 @@ function footerFields(pageIndex, pageCount) {
 
 function makePage(body, pageIndex, pageCount, dimensions, extraClass = "") {
   return `<div class="page-shell" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm">
-    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-frame-color:${settingColor("gridFrameColor")};--grid-cross-color:${settingColor("gridCrossColor")};--grid-diagonal-color:${settingColor("gridDiagonalColor")};--trace-color:${settingColor("traceColor")};--stroke-active:${settingColor("strokeActiveColor")}">
+    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-frame-color:${settingColor("gridFrameColor")};--grid-cross-color:${settingColor("gridCrossColor")};--grid-diagonal-color:${settingColor("gridDiagonalColor")};--trace-color:${settingColor("traceColor")};--stroke-active:${settingColor("strokeActiveColor")};--guide-color:${settingColor("guideColor")}">
       ${headerFields()}${body}${footerFields(pageIndex, pageCount)}
     </section>
   </div>`;
@@ -1502,6 +1505,7 @@ function ensureStrokeForm(pdf, character, index) {
 function drawCellGlyph(pdf, source, square) {
   const character = source.dataset.ch;
   const trace = source.dataset.trace === "1";
+  const guide = source.dataset.guide === "1";
   const step = source.dataset.step;
   const applyScale = trace || source.dataset.traceScale === "1";
   const traceScale = applyScale ? (settings.traceScale ?? 1) : 1;
@@ -1531,7 +1535,7 @@ function drawCellGlyph(pdf, source, square) {
       pdf.doFormObject(`${character}#s${n}`, matrix);
     }
   } else {
-    setPdfColor(pdf, "setFillColor", trace ? settingColor("traceColor") : settingColor("strokeActiveColor"), trace ? settings.traceOpacity : 1);
+    setPdfColor(pdf, "setFillColor", trace ? settingColor("traceColor") : (guide ? settingColor("guideColor") : settingColor("strokeActiveColor")), trace ? settings.traceOpacity : 1);
     if (!ensureGlyphForm(pdf, character)) return;
     pdf.doFormObject(character, matrix);
   }
