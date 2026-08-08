@@ -57,6 +57,7 @@ const DEFAULT_SETTINGS = {
   traceColor: "#d8dde1",
   traceOpacity: 1,
   traceScale: 1,
+  strokeActiveColor: "#202b33",
   gridFrameColor: "#aebac2",
   gridCrossColor: "#c9d2d8",
   gridDiagonalColor: "#d8c6c6",
@@ -126,6 +127,7 @@ let exportStatusTimer = 0;
 let strokePrefetchScheduled = false;
 let strokePrefetchCursor = 0;
 let pdfOperationActive = false;
+const svgPngCache = new WeakMap();
 const PACK_FETCH_TIMEOUT_MS = 30000;
 const PACK_PREFETCH_TIMEOUT_MS = 60000;
 const MAX_PACK_RETRIES = 2;
@@ -313,7 +315,7 @@ function makeCharacterSvg(character, options = {}) {
     const opacity = options.trace ? settings.traceOpacity : 1;
     const colorStyle = options.trace ? ` style="--trace-color:${settingColor("traceColor")}"` : "";
     const glyphClass = options.trace ? "fallback-glyph trace-glyph" : "fallback-glyph";
-    const traceScale = (options.trace || options.applyTraceScale) ? (settings.traceScale ?? 1) : 1;
+    const traceScale = (options.trace || options.applyTraceScale) && settings.template !== "stroke" ? (settings.traceScale ?? 1) : 1;
     const textTransform = traceScale !== 1 ? ` transform="translate(512 512) scale(${traceScale}) translate(-512 -512)"` : "";
     return `<svg class="hanzi-cell pending-cell" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 正在载入">${grid}<text class="${glyphClass}" x="512" y="512" opacity="${opacity}"${colorStyle}${textTransform}>${escapeHtml(character)}</text></svg>`;
   }
@@ -323,7 +325,7 @@ function makeCharacterSvg(character, options = {}) {
   if (options.trace) dataAttrs.push('data-trace="1"');
   if (options.mode === "step") dataAttrs.push(`data-step="${options.step ?? data.strokes.length - 1}"`);
   if (options.applyTraceScale) dataAttrs.push('data-trace-scale="1"');
-  const traceScale = (options.trace || options.applyTraceScale) ? (settings.traceScale ?? 1) : 1;
+  const traceScale = (options.trace || options.applyTraceScale) && settings.template !== "stroke" ? (settings.traceScale ?? 1) : 1;
   const scaleWrap = traceScale !== 1 ? `<g transform="translate(512 512) scale(${traceScale}) translate(-512 -512)">` : "";
   const scaleClose = traceScale !== 1 ? "</g>" : "";
   return `<svg class="hanzi-cell" ${dataAttrs.join(" ")} viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}" role="img" aria-label="${escapeHtml(character)} 字练习格">${grid}${scaleWrap}<g transform="translate(0 ${BASELINE}) scale(1 -1)">${paths}</g>${scaleClose}${annotations}</svg>`;
@@ -446,7 +448,7 @@ function footerFields(pageIndex, pageCount) {
 
 function makePage(body, pageIndex, pageCount, dimensions, extraClass = "") {
   return `<div class="page-shell" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm">
-    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-frame-color:${settingColor("gridFrameColor")};--grid-cross-color:${settingColor("gridCrossColor")};--grid-diagonal-color:${settingColor("gridDiagonalColor")};--trace-color:${settingColor("traceColor")}">
+    <section class="page ${extraClass}" style="--paper-width:${dimensions.width}mm;--paper-height:${dimensions.height}mm;--page-margin:${settings.marginMm}mm;--grid-frame-color:${settingColor("gridFrameColor")};--grid-cross-color:${settingColor("gridCrossColor")};--grid-diagonal-color:${settingColor("gridDiagonalColor")};--trace-color:${settingColor("traceColor")};--stroke-active:${settingColor("strokeActiveColor")}">
       ${headerFields()}${body}${footerFields(pageIndex, pageCount)}
     </section>
   </div>`;
@@ -1007,6 +1009,41 @@ function render() {
   document.body.dataset.template = settings.template;
   updateHeaderFieldVisibility();
   updateOutputs();
+  prerenderStrokePngs();
+}
+
+function buildStandaloneSvg(svg) {
+  const character = svg.dataset.ch;
+  const data = window.HANZI_STROKES?.[character];
+  if (!data) return null;
+  const step = svg.dataset.step;
+  const mode = step !== undefined ? "step" : "full";
+  const stepNum = step !== undefined ? Number(step) : data.strokes.length - 1;
+  const paths = data.strokes.map((pathData, index) => {
+    if (mode === "step" && index > stepNum) return "";
+    const fill = mode === "step" && index < stepNum ? STROKE_DONE_COLOR : settingColor("strokeActiveColor");
+    return `<path d="${pathData}" fill="${fill}"/>`;
+  }).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}"><g transform="translate(0 ${BASELINE}) scale(1 -1)">${paths}</g></svg>`;
+}
+
+function prerenderStrokePngs() {
+  if (settings.template !== "stroke") return;
+  for (const svg of els.pages.querySelectorAll("svg.hanzi-cell[data-ch]")) {
+    if (svgPngCache.has(svg)) continue;
+    const svgSource = buildStandaloneSvg(svg);
+    if (!svgSource) continue;
+    const img = new Image();
+    const svgDataUrl = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgSource);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 256;
+      canvas.getContext("2d").drawImage(img, 0, 0, 256, 256);
+      svgPngCache.set(svg, canvas.toDataURL("image/png"));
+    };
+    img.src = svgDataUrl;
+  }
 }
 
 function scheduleRender(shouldSave = true) {
@@ -1489,12 +1526,12 @@ function drawCellGlyph(pdf, source, square) {
       pdf.doFormObject(`${character}#s${i}`, matrix);
     }
     if (n < data.strokes.length) {
-      if (!trace) setPdfColor(pdf, "setFillColor", STROKE_ACTIVE_COLOR);
+      if (!trace) setPdfColor(pdf, "setFillColor", settingColor("strokeActiveColor"));
       if (!ensureStrokeForm(pdf, character, n)) return;
       pdf.doFormObject(`${character}#s${n}`, matrix);
     }
   } else {
-    setPdfColor(pdf, "setFillColor", trace ? settingColor("traceColor") : STROKE_ACTIVE_COLOR, trace ? settings.traceOpacity : 1);
+    setPdfColor(pdf, "setFillColor", trace ? settingColor("traceColor") : settingColor("strokeActiveColor"), trace ? settings.traceOpacity : 1);
     if (!ensureGlyphForm(pdf, character)) return;
     pdf.doFormObject(character, matrix);
   }
@@ -1827,6 +1864,37 @@ function init() {
   });
   els.exportPdfBtn.addEventListener("click", exportPdf);
   els.printBtn.addEventListener("click", printWorksheet);
+  els.pages.addEventListener("click", (event) => {
+    if (settings.template !== "stroke") return;
+    const svg = event.target.closest("svg.hanzi-cell");
+    if (!svg) return;
+    const character = svg.dataset.ch;
+    if (!character) return;
+    const data = window.HANZI_STROKES?.[character];
+    if (!data) return;
+    const svgSource = buildStandaloneSvg(svg);
+    if (!svgSource) return;
+    if (!navigator.clipboard?.write) {
+      showExportStatus("当前环境不支持复制，请通过 HTTPS 或本地服务器打开", true);
+      return;
+    }
+    const textBlob = new Blob([svgSource], { type: "text/plain" });
+    const htmlBlob = new Blob([svgSource], { type: "text/html" });
+    // 优先使用预渲染的 PNG（Safari 不支持 image/svg+xml，且异步 canvas 会丢失用户手势）
+    const cachedPng = svgPngCache.get(svg);
+    const items = { "text/html": htmlBlob, "text/plain": textBlob };
+    if (cachedPng) {
+      const bytes = atob(cachedPng.split(",")[1]);
+      const arr = new Uint8Array(bytes.length);
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i);
+      items["image/png"] = new Blob([arr], { type: "image/png" });
+    }
+    navigator.clipboard.write([new ClipboardItem(items)]).then(() => {
+      showExportStatus(cachedPng ? "已复制到剪贴板（PNG 图片 + SVG 源码）" : "已复制 SVG 到剪贴板");
+    }).catch(() => {
+      showExportStatus("复制失败，请重试", true);
+    });
+  });
   els.previewWrap.addEventListener("wheel", (event) => {
     if ((!event.metaKey && !event.ctrlKey) || event.deltaY === 0) return;
     event.preventDefault();

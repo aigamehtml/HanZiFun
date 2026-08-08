@@ -519,6 +519,14 @@ body[data-template="stroke"] .stroke-only {
   display: grid;
 }
 
+.stroke-only-color {
+  display: none;
+}
+
+body[data-template="stroke"] .stroke-only-color {
+  display: flex;
+}
+
 .preview-wrap {
   min-width: 0;
   height: 100%;
@@ -745,6 +753,15 @@ body[data-template="stroke"] .stroke-only {
   display: block;
   width: var(--cell-mm, 21mm);
   height: var(--cell-mm, 21mm);
+}
+
+body[data-template="stroke"] svg.hanzi-cell {
+  cursor: pointer;
+}
+
+body[data-template="stroke"] svg.hanzi-cell:hover {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .exercise-strip {
