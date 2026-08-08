@@ -618,7 +618,8 @@ let kaiCharSet = null;
 
 async function loadHbSubsetWasm() {
   if (kaiRuntime.wasm) return kaiRuntime.wasm;
-  const res = await fetch("vendor/hb-subset.wasm");
+  const url = CDN_BASE ? `${CDN_BASE}/vendor/hb-subset.wasm` : "vendor/hb-subset.wasm";
+  const res = await fetch(url);
   if (!res.ok) throw new Error("hb-subset.wasm 载入失败");
   const { instance } = await WebAssembly.instantiate(await res.arrayBuffer());
   kaiRuntime.wasm = instance.exports;
@@ -627,7 +628,8 @@ async function loadHbSubsetWasm() {
 
 async function loadKaiFontBuffer() {
   if (kaiRuntime.font) return kaiRuntime.font;
-  const res = await fetch("vendor/fonts/kai.ttf");
+  const url = CDN_BASE ? `${CDN_BASE}/vendor/fonts/kai.ttf` : "vendor/fonts/kai.ttf";
+  const res = await fetch(url);
   if (!res.ok) throw new Error("kai.ttf 载入失败");
   kaiRuntime.font = new Uint8Array(await res.arrayBuffer());
   return kaiRuntime.font;
@@ -635,7 +637,8 @@ async function loadKaiFontBuffer() {
 
 async function loadKaiCharSet() {
   if (kaiRuntime.chars) return kaiRuntime.chars;
-  const res = await fetch("vendor/fonts/kai-chars.json");
+  const url = CDN_BASE ? `${CDN_BASE}/vendor/fonts/kai-chars.json` : "vendor/fonts/kai-chars.json";
+  const res = await fetch(url);
   if (!res.ok) throw new Error("kai-chars.json 载入失败");
   kaiRuntime.chars = new Set(JSON.parse(await res.text()));
   return kaiRuntime.chars;
