@@ -744,7 +744,7 @@ body[data-template="trace"] .guide-only-color {
   display: grid;
   min-width: 0;
   justify-items: center;
-  gap: 1mm;
+  gap: 0;
 }
 
 .char-info strong {
@@ -752,9 +752,10 @@ body[data-template="trace"] .guide-only-color {
 }
 
 .pinyin {
-  min-height: 12px;
+  min-height: 10px;
   color: #64727b;
   font-size: 10px;
+  line-height: 1.2;
 }
 
 .hanzi-cell {

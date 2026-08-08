@@ -258,13 +258,24 @@ function pointToSvg(point) {
 
 function makeGrid(type, options = {}) {
   // Keep the frame clear of the SVG clipping edge so print rasterization
-  // cannot drop the left or bottom stroke at some scaling factors.
+  // cannot drop the left or bottom stroke at some scaling factors. When a
+  // neighbour shares the edge (cell/row gap 0) the shared side is extended
+  // to the viewBox boundary (joinRight/joinBottom) and the matching side on
+  // the adjacent cell is omitted (joinLeft/joinTop), so the two cells meet
+  // without a sub-pixel gap or a doubled stroke.
   const edge = 8;
   const farEdge = VIEWBOX_SIZE - edge;
-  const size = VIEWBOX_SIZE - edge * 2;
-  const frame = options.joinLeft
-    ? `<path class="grid-frame-line" d="M${edge} ${edge}H${farEdge}V${farEdge}H${edge}"></path>`
-    : `<rect class="grid-frame-line" x="${edge}" y="${edge}" width="${size}" height="${size}"></rect>`;
+  const left = options.joinLeft ? 0 : edge;
+  const right = options.joinRight ? VIEWBOX_SIZE : farEdge;
+  const top = options.joinTop ? 0 : edge;
+  const bottom = options.joinBottom ? VIEWBOX_SIZE : farEdge;
+  const frame = (options.joinLeft || options.joinTop)
+    ? `<path class="grid-frame-line" d="${
+        options.joinTop ? `M${right} ${top}` : `M${left} ${top}H${right}`
+      }V${bottom}H${left}${
+        options.joinLeft ? "" : `V${top}`
+      }"></path>`
+    : `<rect class="grid-frame-line" x="${left}" y="${top}" width="${right - left}" height="${bottom - top}"></rect>`;
   if (!settings.showGuides) return frame;
   const diagonals = type === "mi"
     ? `<line class="grid-diagonal-line" x1="${edge}" y1="${edge}" x2="${farEdge}" y2="${farEdge}"></line><line class="grid-diagonal-line" x1="${farEdge}" y1="${edge}" x2="${edge}" y2="${farEdge}"></line>`
@@ -348,12 +359,13 @@ function pinyinFor(character) {
   return settings.showPinyin ? (window.HANZI_PINYIN?.[character] || "") : "";
 }
 
-function makePracticeCells(character, cellCount) {
+function makePracticeCells(character, cellCount, joinTop = false, joinBottom = false) {
   const joinLeft = settings.cellGapMm === 0;
+  const joinRight = joinLeft;
   return Array.from({ length: cellCount }, (_, index) =>
     makeCharacterSvg(character, index === 0
-      ? { trace: true, annotate: true, joinLeft }
-      : { blank: true, joinLeft })
+      ? { trace: true, annotate: true, joinLeft, joinRight: joinRight && index < cellCount - 1, joinTop, joinBottom }
+      : { blank: true, joinLeft, joinRight: joinRight && index < cellCount - 1, joinTop, joinBottom })
   ).join("");
 }
 
@@ -365,38 +377,45 @@ function progressiveRowsNeeded(character, maximumCells) {
     : 1 + Math.ceil((strokeCount - firstRowCapacity) / maximumCells);
 }
 
-function makeProgressiveCells(character, cellCount, startStep, hasLeadingCell) {
+function makeProgressiveCells(character, cellCount, startStep, hasLeadingCell, joinTop = false, joinBottom = false) {
   const strokeCount = window.HANZI_STROKES?.[character]?.strokes.length || 1;
+  const cellGap0 = settings.cellGapMm === 0;
   return Array.from({ length: cellCount }, (_, index) => {
     const step = startStep + index;
-    const joinLeft = settings.cellGapMm === 0 && (hasLeadingCell || index > 0);
+    const joinLeft = cellGap0 && (hasLeadingCell || index > 0);
+    const joinRight = cellGap0 && index < cellCount - 1;
     if (settings.traceMode === "progressive-blank" && step >= strokeCount) {
-      return makeCharacterSvg("", { blank: true, joinLeft });
+      return makeCharacterSvg("", { blank: true, joinLeft, joinRight, joinTop, joinBottom });
     }
     return makeCharacterSvg(character, {
       trace: true,
       mode: "step",
       step: Math.min(step, strokeCount - 1),
       joinLeft,
+      joinRight,
+      joinTop,
+      joinBottom,
     });
   }).join("");
 }
 
-function makeStandardRow(row, maximumCells) {
+function makeStandardRow(row, maximumCells, options = {}) {
   const { character, rowIndex } = row;
   const rowClass = settings.showRowGuide ? "char-row" : "char-row no-row-guide";
   const rowStyle = `style="--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm"`;
   const guide = settings.showRowGuide
     ? `<div class="char-info"><span class="pinyin">${escapeHtml(pinyinFor(character))}</span><strong>${escapeHtml(character)}</strong></div>`
     : "";
+  const cellGap0 = settings.cellGapMm === 0;
+  const { joinTop = false, joinBottom = false } = options;
   let cells;
   if (PROGRESSIVE_TRACE_MODES.has(settings.traceMode)) {
     const isFirstRow = rowIndex === 0;
     const startStep = isFirstRow ? 0 : maximumCells - 1 + (rowIndex - 1) * maximumCells;
-    const leadingCell = isFirstRow ? makeCharacterSvg(character, { applyTraceScale: true, guide: true }) : "";
-    cells = `${leadingCell}${makeProgressiveCells(character, maximumCells - (isFirstRow ? 1 : 0), startStep, isFirstRow)}`;
+    const leadingCell = isFirstRow ? makeCharacterSvg(character, { applyTraceScale: true, guide: true, joinRight: cellGap0, joinTop, joinBottom }) : "";
+    cells = `${leadingCell}${makeProgressiveCells(character, maximumCells - (isFirstRow ? 1 : 0), startStep, isFirstRow, joinTop, joinBottom)}`;
   } else {
-    cells = `${makeCharacterSvg(character, { applyTraceScale: true, guide: true })}${makePracticeCells(character, maximumCells - 1)}`;
+    cells = `${makeCharacterSvg(character, { applyTraceScale: true, guide: true, joinRight: cellGap0, joinTop, joinBottom })}${makePracticeCells(character, maximumCells - 1, joinTop, joinBottom)}`;
   }
   return `<article class="${rowClass}" ${rowStyle}>
     ${guide}<div class="exercise-strip">${cells}</div>
@@ -491,9 +510,13 @@ function renderStandardPages(characters, dimensions) {
   }
   if (currentPage.length) pages.push(currentPage);
   if (!pages.length) pages.push([]);
+  const rowGap0 = settings.rowGapMm === 0;
   const markup = pages.map((pageRows, pageIndex) => {
     const body = pageRows.length
-      ? `<div class="practice-list" style="--row-gap-mm:${settings.rowGapMm}mm">${pageRows.map((row) => makeStandardRow(row, maximumCells)).join("")}</div>`
+      ? `<div class="practice-list" style="--row-gap-mm:${settings.rowGapMm}mm">${pageRows.map((row, rowIdx) => makeStandardRow(row, maximumCells, {
+          joinTop: rowGap0 && rowIdx > 0,
+          joinBottom: rowGap0 && rowIdx < pageRows.length - 1,
+        })).join("")}</div>`
       : '<div class="empty-page-message">请在左侧输入要练习的汉字</div>';
     return makePage(body, pageIndex, pages.length, dimensions);
   }).join("");
@@ -535,11 +558,18 @@ function renderBlankPages(dimensions) {
   const automaticRows = Math.max(1, Math.floor((usableHeight + settings.rowGapMm) / (settings.cellSizeMm + settings.rowGapMm)));
   const columns = settings.cellsPerRow > 0 ? Math.min(settings.cellsPerRow, automaticColumns) : automaticColumns;
   const rows = settings.rowsPerPage > 0 ? Math.min(settings.rowsPerPage, automaticRows) : automaticRows;
-  const cells = Array.from({ length: columns * rows }, (_, index) => makeCharacterSvg("", {
-    blank: true,
-    gridStyle: gridStyle(),
-    joinLeft: settings.cellGapMm === 0 && index % columns !== 0,
-  })).join("");
+  const cells = Array.from({ length: columns * rows }, (_, index) => {
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+    return makeCharacterSvg("", {
+      blank: true,
+      gridStyle: gridStyle(),
+      joinLeft: settings.cellGapMm === 0 && col > 0,
+      joinRight: settings.cellGapMm === 0 && col < columns - 1,
+      joinTop: settings.rowGapMm === 0 && row > 0,
+      joinBottom: settings.rowGapMm === 0 && row < rows - 1,
+    });
+  }).join("");
   const body = `<div class="blank-grid" style="--blank-columns:${columns};--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm;--row-gap-mm:${settings.rowGapMm}mm">${cells}</div>`;
   const pages = Array.from({ length: settings.blankPageCount }, (_, index) => makePage(body, index, settings.blankPageCount, dimensions, "blank-page"));
   return { markup: pages.join(""), pageCount: pages.length, columns, rows };
@@ -558,7 +588,14 @@ function renderCopyPages(text, dimensions) {
   const markup = Array.from({ length: pageCount }, (_, pageIndex) => {
     const cells = Array.from({ length: pageCapacity }, (_, index) => {
       const character = slots[pageIndex * pageCapacity + index];
-      const options = { joinLeft: settings.cellGapMm === 0 && index % columns !== 0 };
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      const options = {
+        joinLeft: settings.cellGapMm === 0 && col > 0,
+        joinRight: settings.cellGapMm === 0 && col < columns - 1,
+        joinTop: settings.rowGapMm === 0 && row > 0,
+        joinBottom: settings.rowGapMm === 0 && row < rows - 1,
+      };
       return character !== undefined
         ? makeCopyCell(character, options)
         : makeCharacterSvg("", { ...options, blank: true, gridStyle: gridStyle() });
