@@ -36,6 +36,8 @@
 
 ![PDF 导出示例](screenshots/pdf-export.png)
 
+![pdf 样例](./screenshots/pdf-sample.png)
+
 ## 功能特性
 
 - **4 种练习模板**：描红练习、笔顺分解、空白格纸、文章临摹
