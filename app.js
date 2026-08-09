@@ -132,19 +132,63 @@ let strokePrefetchCursor = 0;
 let pdfOperationActive = false;
 const svgPngCache = new WeakMap();
 const PACK_FETCH_TIMEOUT_MS = 30000;
-const PACK_PREFETCH_TIMEOUT_MS = 60000;
 const MAX_PACK_RETRIES = 2;
 const MAX_CHUNK_RETRIES = 3;
 const MAX_CONCURRENT_PACK_DOWNLOADS = 2;
 let activePackDownloads = 0;
 const packDownloadQueue = [];
 const prefetchedPackIds = new Set();
+const advertisedPrefetchUrls = new Set();
 
 function fetchWithTimeout(url, options = {}, timeout = PACK_FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   return fetch(url, { ...options, signal: controller.signal })
     .finally(() => clearTimeout(timer));
+}
+
+function connectionAllowsBackgroundWork() {
+  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  return navigator.onLine && !connection?.saveData && !/(^|-)2g$/.test(connection?.effectiveType || "");
+}
+
+function pdfRuntimeUrls() {
+  return [
+    "vendor/jspdf.umd.min.js",
+    CDN_BASE ? `${CDN_BASE}/vendor/hb-subset.wasm` : "vendor/hb-subset.wasm",
+    CDN_BASE ? `${CDN_BASE}/vendor/fonts/kai.ttf` : "vendor/fonts/kai.ttf",
+    CDN_BASE ? `${CDN_BASE}/vendor/fonts/kai-chars.json` : "vendor/fonts/kai-chars.json",
+  ];
+}
+
+function cacheUrlsInServiceWorker(urls) {
+  if (!("serviceWorker" in navigator) || !location.protocol.startsWith("http")) return false;
+  const send = (target) => {
+    if (!target) return false;
+    target.postMessage({ type: "CACHE_URLS", urls });
+    return true;
+  };
+  if (send(navigator.serviceWorker.controller)) return true;
+  navigator.serviceWorker.ready.then((registration) => send(registration.active)).catch(() => undefined);
+  return true;
+}
+
+function advertiseFetchPrefetch(url) {
+  if (!url || advertisedPrefetchUrls.has(url)) return;
+  advertisedPrefetchUrls.add(url);
+  const link = document.createElement("link");
+  link.rel = "prefetch";
+  link.as = "fetch";
+  link.crossOrigin = "anonymous";
+  link.href = url;
+  document.head.append(link);
+}
+
+function cacheOrPrefetchUrls(urls) {
+  const validUrls = urls.filter(Boolean);
+  if (!validUrls.length) return;
+  if (cacheUrlsInServiceWorker(validUrls)) return;
+  for (const url of validUrls) advertiseFetchPrefetch(url);
 }
 let activePdfProgress = null;
 let pdfProtectedCharacters = [];
@@ -930,8 +974,7 @@ function activeZipPacks() {
 
 function prefetchUnusedStrokePacks() {
   strokePrefetchScheduled = false;
-  const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  if (!USE_ZIP_PACK || !navigator.onLine || connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType || "")) return;
+  if (!USE_ZIP_PACK || !connectionAllowsBackgroundWork()) return;
   if (pendingChunks.size || [...zipArchiveStates.values()].includes("loading")) {
     scheduleStrokePackPrefetch(2000);
     return;
@@ -949,17 +992,7 @@ function prefetchUnusedStrokePacks() {
     if (prefetchedPackIds.has(pack.id)) continue;
     prefetchedPackIds.add(pack.id);
     advertised += 1;
-    fetchWithTimeout(resolvePackUrl(pack) ?? pack.file, {}, PACK_PREFETCH_TIMEOUT_MS)
-      .then(async (response) => {
-        if (!response.ok) {
-          prefetchedPackIds.delete(pack.id);
-          return;
-        }
-        await response.arrayBuffer();
-      })
-      .catch(() => {
-        prefetchedPackIds.delete(pack.id);
-      });
+    cacheOrPrefetchUrls([resolvePackUrl(pack) ?? pack.file]);
   }
   strokePrefetchCursor = (strokePrefetchCursor + Math.max(batchSize, advertised)) % Math.max(1, packs.length);
   if (packs.some((pack) => !activePackIds.has(pack.id) && !zipArchivePromises.has(pack.id) && !prefetchedPackIds.has(pack.id))) {
@@ -976,6 +1009,14 @@ function scheduleStrokePackPrefetch(delay = 0) {
   };
   if (delay) setTimeout(schedule, delay);
   else schedule();
+}
+
+function warmPdfRuntime() {
+  if (!connectionAllowsBackgroundWork()) return;
+  cacheOrPrefetchUrls(pdfRuntimeUrls());
+  loadHbSubsetWasm().catch(() => {});
+  loadKaiFontBuffer().catch(() => {});
+  loadKaiCharSet().catch(() => {});
 }
 
 function updatePreviewScale(dimensions) {
@@ -1748,7 +1789,57 @@ async function exportPdf() {
   }
 }
 
+function shouldUsePdfPrintFallback() {
+  const ua = navigator.userAgent || "";
+  const coarseSmallScreen = matchMedia("(pointer: coarse)").matches && matchMedia("(max-width: 900px)").matches;
+  return coarseSmallScreen || /Android|iPhone|iPad|iPod|Mobi|MiuiBrowser|XiaoMi/i.test(ua);
+}
+
+async function shareOrSavePdfForPrint(pdf, filename) {
+  const canTryShare = typeof File !== "undefined" && navigator.share && navigator.canShare;
+  if (canTryShare) {
+    const blob = pdf.output("blob");
+    const file = new File([blob], filename, { type: "application/pdf" });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: APP_TITLE });
+        return "shared";
+      } catch (error) {
+        if (error?.name === "AbortError") return "cancelled";
+      }
+    }
+  }
+  pdf.save(filename);
+  return "saved";
+}
+
+async function savePdfForManualPrint() {
+  const finish = beginPdfOperation(els.printBtn);
+  if (!finish) return;
+  try {
+    reportPdfProgress("正在生成 PDF…");
+    const { pdf, pageCount } = await buildPdfDocument();
+    const result = await shareOrSavePdfForPrint(pdf, exportFilename());
+    if (result === "shared") showExportStatus(`已生成 ${pageCount} 页 PDF，可在系统面板中选择打印`);
+    else if (result === "cancelled") showExportStatus("已取消系统分享");
+    else showExportStatus(`已生成 ${pageCount} 页 PDF，请打开后选择打印`);
+  } catch (error) {
+    console.error(error);
+    showExportStatus(error?.message || "打印失败，请尝试使用导出 PDF 功能", true);
+  } finally {
+    finish();
+  }
+}
+
 function printWorksheet() {
+  if (shouldUsePdfPrintFallback()) {
+    els.printNote.textContent = "移动端浏览器通常不支持直接唤起系统打印，已改为生成 PDF 后打印。";
+    els.printNote.hidden = false;
+    setTimeout(() => { els.printNote.hidden = true; }, 5000);
+    savePdfForManualPrint();
+    return;
+  }
+
   // Detect if window.print() actually works — some mobile browsers (e.g. Xiaomi)
   // silently ignore it without opening any print dialog.
   let printWorked = false;
@@ -1779,8 +1870,8 @@ function printWorksheet() {
     try {
       reportPdfProgress("正在生成 PDF…");
       const { pdf, pageCount } = await buildPdfDocument();
-      pdf.save(exportFilename());
-      showExportStatus(`浏览器不支持直接打印，${pageCount} 页 PDF 已下载，请打开后选择打印`);
+      await shareOrSavePdfForPrint(pdf, exportFilename());
+      showExportStatus(`浏览器不支持直接打印，${pageCount} 页 PDF 已生成，请打开后选择打印`);
     } catch (error) {
       console.error(error);
       showExportStatus(error?.message || "打印失败，请尝试使用导出 PDF 功能", true);
@@ -1969,12 +2060,9 @@ function init() {
   window.addEventListener("offline", () => scheduleRender(false));
   window.addEventListener("load", () => scheduleStrokePackPrefetch(15000));
   window.addEventListener("load", () => {
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (navigator.onLine && !connection?.saveData && !/(^|-)2g$/.test(connection?.effectiveType || "")) {
-      loadHbSubsetWasm().catch(() => {});
-      loadKaiFontBuffer().catch(() => {});
-      loadKaiCharSet().catch(() => {});
-    }
+    const schedule = () => warmPdfRuntime();
+    if ("requestIdleCallback" in window) window.requestIdleCallback(schedule, { timeout: 8000 });
+    else setTimeout(schedule, 2500);
   });
   registerPwa();
   render();

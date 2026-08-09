@@ -15,6 +15,30 @@ const APP_SHELL = [
   "./data/stroke-index.js",
   "./data/pinyin.js"
 ];
+const PDF_RUNTIME = [
+  "./vendor/jspdf.umd.min.js",
+  "./vendor/hb-subset.wasm",
+  "./vendor/fonts/kai.ttf",
+  "./vendor/fonts/kai-chars.json"
+];
+
+function isContentHashedStrokePack(url) {
+  return /\/data\/strokes-pack-\d+-[a-f0-9]{8,}\.zip$/i.test(url.pathname);
+}
+
+async function putInCache(cache, request) {
+  const response = await fetch(request);
+  if (!response.ok) throw new Error(`Failed to fetch ${request.url}: ${response.status}`);
+  await cache.put(request, response);
+}
+
+async function cacheUrls(urls) {
+  const cache = await caches.open(CACHE_NAME);
+  await Promise.all(urls.map((url) => {
+    const href = new URL(url, self.location.href).href;
+    return putInCache(cache, new Request(href, { mode: "cors" })).catch(() => undefined);
+  }));
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -40,6 +64,15 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "CACHE_URLS" && Array.isArray(event.data.urls)) {
+    event.waitUntil(cacheUrls(event.data.urls));
+  }
+  if (event.data?.type === "CACHE_PDF_RUNTIME") {
+    event.waitUntil(cacheUrls(PDF_RUNTIME));
+  }
+});
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
@@ -47,25 +80,41 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin && !isCDN) return;
 
   if (isCDN) {
-    // CDN (jsDelivr): cache-first — content-hashed filenames guarantee freshness
-    const result = caches.match(event.request).then(async (cached) => {
-      if (cached) return { response: cached, cacheWrite: Promise.resolve() };
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 60000);
-      try {
-        const response = await fetch(event.request, { signal: controller.signal });
-        let cacheWrite = Promise.resolve();
-        if (response.ok) {
-          const cacheResponse = response.clone();
-          cacheWrite = caches.open(CACHE_NAME)
-            .then((cache) => cache.put(event.request, cacheResponse))
-            .catch(() => undefined);
+    const result = isContentHashedStrokePack(url)
+      ? caches.match(event.request).then(async (cached) => {
+        if (cached) return { response: cached, cacheWrite: Promise.resolve() };
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 60000);
+        try {
+          const response = await fetch(event.request, { signal: controller.signal });
+          let cacheWrite = Promise.resolve();
+          if (response.ok) {
+            const cacheResponse = response.clone();
+            cacheWrite = caches.open(CACHE_NAME)
+              .then((cache) => cache.put(event.request, cacheResponse))
+              .catch(() => undefined);
+          }
+          return { response, cacheWrite };
+        } finally {
+          clearTimeout(timer);
         }
-        return { response, cacheWrite };
-      } finally {
-        clearTimeout(timer);
-      }
-    });
+      })
+      : fetch(event.request)
+        .then((response) => {
+          let cacheWrite = Promise.resolve();
+          if (response.ok) {
+            const cacheResponse = response.clone();
+            cacheWrite = caches.open(CACHE_NAME)
+              .then((cache) => cache.put(event.request, cacheResponse))
+              .catch(() => undefined);
+          }
+          return { response, cacheWrite };
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return { response: cached, cacheWrite: Promise.resolve() };
+          throw new Error("CDN request failed and no cache available");
+        });
     event.respondWith(result.then(({ response }) => response));
     event.waitUntil(result.then(({ cacheWrite }) => cacheWrite).catch(() => undefined));
     return;

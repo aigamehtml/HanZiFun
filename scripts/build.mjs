@@ -70,7 +70,23 @@ await minifyJavaScript("service-worker.js", "service-worker.js", { __BUILD_VERSI
 await cp(path.join(root, "data"), path.join(output, "data"), { recursive: true });
 await rm(path.join(output, "data", "characters"), { recursive: true, force: true });
 await cp(path.join(root, "icons"), path.join(output, "icons"), { recursive: true });
-await cp(path.join(root, "vendor"), path.join(output, "vendor"), { recursive: true });
+const vendorFiles = [
+  "fflate.min.js",
+  "fflate.LICENSE",
+  "jspdf.umd.min.js",
+  "jspdf.LICENSE",
+  "hb-subset.wasm",
+  "hb-subset.LICENSE",
+  "kai.LICENSE",
+  "zip.LICENSE",
+  "fonts/kai.ttf",
+  "fonts/kai-chars.json",
+];
+for (const file of vendorFiles) {
+  const target = path.join(output, "vendor", file);
+  await mkdir(path.dirname(target), { recursive: true });
+  await cp(path.join(root, "vendor", file), target);
+}
 await cp(path.join(root, "manifest.webmanifest"), path.join(output, "manifest.webmanifest"));
 await cp(path.join(root, "robots.txt"), path.join(output, "robots.txt"));
 await cp(path.join(root, "sitemap.xml"), path.join(output, "sitemap.xml"));

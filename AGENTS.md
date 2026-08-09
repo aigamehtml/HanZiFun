@@ -55,10 +55,10 @@ Tianzi and Mizi are grid styles, not templates. The selected grid style applies 
 - Persist settings and optionally input text in `localStorage` with a `settingsVersion`.
 - Treat mobile as a first-class responsive target: scaled paper preview, no page-level horizontal scrolling, touch-friendly controls.
 - Support PWA installation with a manifest, service worker, app icons, standalone display, and basic offline caching.
-- Direct PDF export uses locally vendored jsPDF and native PDF path/line/text primitives. Never rasterize the whole page through Canvas or add a full-page image. Keep browser printing as a separate action.
+- Direct PDF export uses locally vendored jsPDF and native PDF path/line/text primitives. Never rasterize the whole page through Canvas or add a full-page image. Desktop printing may use `window.print()`, while mobile printing should prefer the PDF share/download fallback because some Android browsers ignore direct print calls.
 - Built-in content templates include the 3500 common characters in 100-character groups, 100 Tang poems, the full San Zi Jing plus sections, and selected Shi Jing poems. Regenerate them with `npm run content:data` from a local `chinese-poetry` extract when needed.
 - While an on-demand stroke ZIP is loading or decompressing, expose an explicit loading state and render pending grid glyphs with the browser's regular-script fallback stack at a size close to the final SVG strokes.
-- After the initial page has been stable for 15 seconds, advertise unused stroke ZIP packs in small batches with low-priority HTML5 `prefetch` hints. Exclude packs involved in the current page, defer while active stroke loads are running, and skip on save-data, 2G, offline, or `file://` contexts.
+- After the initial page has been stable for 15 seconds, warm unused stroke ZIP packs in small batches through the Service Worker cache, falling back to low-priority HTML5 `prefetch` hints when no Service Worker is available. Exclude packs involved in the current page, defer while active stroke loads are running, and skip on save-data, 2G, offline, or `file://` contexts.
 - Stroke data comes from `hanzi-writer-data`, derived from Make Me A Hanzi. Preserve attribution and license notes when expanding data.
 
 ## Product Decisions
