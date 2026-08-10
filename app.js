@@ -452,7 +452,9 @@ function makeProgressiveCells(character, cellCount, startStep, hasLeadingCell, j
 function makeStandardRow(row, maximumCells, options = {}) {
   const { character, rowIndex } = row;
   const rowClass = settings.showRowGuide ? "char-row" : "char-row no-row-guide";
-  const rowStyle = `style="--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm"`;
+  const guideCharPx = clamp(settings.cellSizeMm * CSS_PX_PER_MM * 0.58, 10, 20);
+  const guidePinyinPx = clamp(settings.cellSizeMm * CSS_PX_PER_MM * 0.25, 7, 10);
+  const rowStyle = `style="--cell-mm:${settings.cellSizeMm}mm;--cell-gap-mm:${settings.cellGapMm}mm;--guide-char-px:${guideCharPx.toFixed(2)}px;--guide-pinyin-px:${guidePinyinPx.toFixed(2)}px"`;
   const guide = settings.showRowGuide
     ? `<div class="char-info"><span class="pinyin">${escapeHtml(pinyinFor(character))}</span><strong>${escapeHtml(character)}</strong></div>`
     : "";

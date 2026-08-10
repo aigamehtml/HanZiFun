@@ -44,7 +44,7 @@
 - **2 种格子样式**：田字格、米字格
 - **全量字符覆盖**：9574 个单码点汉字笔顺数据（源自 [hanzi-writer-data](https://github.com/chanind/hanzi-writer-data)，基于 Make Me A Hanzi）
 - **按需加载**：首屏预载 28 个基础字，其余按 250 字拆分为 ZIP 小包，浏览时只下载命中的包并按条目解压
-- **内置内容模板**：唐诗 100 首、三字经全文与分段、诗经选读、小学常用 3500 字分段、基础结构字组
+- **内置内容模板**：唐诗 100 首、宋词精选、三字经全文与分段、诗经选读、小学常用 3500 字分段、基础结构字组
 - **多纸张支持**：A5 / A4 / A3 / Letter，纵向 / 横向，毫米级精确排版
 - **所见即所得**：所有设置实时更新预览，无需手动生成
 - **PDF 导出**：本地 jsPDF 生成，内嵌子集化楷体字体，支持多页
@@ -65,6 +65,18 @@
 | 数据分发 | jsDelivr CDN + GitHub Pages，Service Worker 缓存 |
 | 构建 | Node.js 脚本（esbuild 压缩 JS、html-minifier-terser 压缩 HTML、Tailwind CLI 生成 CSS） |
 | 部署 | GitHub Actions → GitHub Pages |
+
+## 内置内容数据来源
+
+内置内容模板在构建期生成到 `data/content-templates.js`，运行时不访问第三方接口。
+
+- **唐诗精选**：来自 `chinese-poetry` 数据集的 `mengxue/tangshisanbaishou.json`，当前取前 100 首。
+- **宋词精选**：来自 `chinese-poetry` 数据集的《宋词三百首》数据，当前收录源文件中的 280 首。
+- **三字经**：来自 `chinese-poetry` 数据集的 `mengxue/sanzijing-new.json`，同时提供全文和分段模板。
+- **诗经选读**：来自 `chinese-poetry` 数据集的 `shijing/shijing.json`，当前取前 20 篇。
+- **小学常用 3500 字**：来自《通用规范汉字表》一级字表整理文本 `data/common-3500.txt`，按每 100 字拆分为模板。
+
+`chinese-poetry` 数据集使用 MIT License，来源和许可说明见 [NOTICE.md](NOTICE.md)。
 
 ## 本地运行
 

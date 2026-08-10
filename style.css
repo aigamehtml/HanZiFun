@@ -742,20 +742,24 @@ body[data-template="trace"] .guide-only-color {
 
 .char-info {
   display: grid;
+  height: var(--cell-mm);
+  align-content: center;
   min-width: 0;
   justify-items: center;
   gap: 0;
+  overflow: hidden;
 }
 
 .char-info strong {
-  font-size: 20px;
+  font-size: var(--guide-char-px, 20px);
+  line-height: 1;
 }
 
 .pinyin {
-  min-height: 10px;
+  min-height: var(--guide-pinyin-px, 10px);
   color: #64727b;
-  font-size: 10px;
-  line-height: 1.2;
+  font-size: var(--guide-pinyin-px, 10px);
+  line-height: 1;
 }
 
 .hanzi-cell {

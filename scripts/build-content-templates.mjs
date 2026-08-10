@@ -99,6 +99,35 @@ async function shiJingTemplates() {
   }));
 }
 
+async function songCiTemplates() {
+  const songCi = await readFirstJson([
+    "songci/宋词三百首.json",
+    "songci/songcisanbaishou.json",
+    "宋词/宋词三百首.json",
+  ]);
+  return songCi
+    .filter((ci) => (ci.paragraphs || []).some((line) => String(line).trim()))
+    .map((ci, index) => ({
+      id: `songci-300-${String(index + 1).padStart(3, "0")}`,
+      category: "宋词精选",
+      title: `${simplify(ci.rhythmic)} · ${simplify(ci.author)}`,
+      text: normalizeText(ci.paragraphs || []),
+    }));
+}
+
+async function readFirstJson(relativePaths) {
+  const errors = [];
+  for (const relativePath of relativePaths) {
+    try {
+      return await readJson(relativePath);
+    } catch (error) {
+      if (error?.code !== "ENOENT") throw error;
+      errors.push(relativePath);
+    }
+  }
+  throw new Error(`Missing JSON source. Tried: ${errors.join(", ")}`);
+}
+
 const templates = [
   { id: "demo", category: "快速开始", title: "基础示例字", text: "人 口 日 月 水 火 山 田 木 永" },
   { id: "numbers", category: "小学常用", title: "数字与方位", text: "一 二 三 四 五 六 七 八 九 十 上 下 左 右 中 东 南 西 北" },
@@ -109,6 +138,7 @@ const templates = [
   ...(await tangPoemTemplates()),
   ...(await sanZiJingTemplates()),
   ...(await shiJingTemplates()),
+  ...(await songCiTemplates()),
 ];
 
 await writeFile(outputPath, `window.HANZI_CONTENT_TEMPLATES=${toScriptValue(templates)};\n`);
