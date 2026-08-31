@@ -123,19 +123,21 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: 发布 Release
+      - name: 发布 Release（非阻塞）
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
           test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物"; exit 0; }
-          if gh release view "$VER" 2>/dev/null; then
-            gh release upload "$VER" release/* --clobber
-          else
+          gh release view "$VER" 2>/dev/null && {
+            echo "Release $VER 已存在，追加产物"
+            gh release upload "$VER" release/* --clobber || true
+          } || {
+            echo "创建 Release $VER"
             gh release create "$VER" \
               --title "桌面版（Linux）$VER" \
               --notes "离线构建" \
-              release/*
-          fi
+              release/* || true
+          }
 
   build-windows:
     runs-on: windows-latest
@@ -189,16 +191,18 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: 发布 Release
+      - name: 发布 Release（非阻塞）
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
           test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物"; exit 0; }
-          if gh release view "$VER" 2>/dev/null; then
-            gh release upload "$VER" release/* --clobber
-          else
+          gh release view "$VER" 2>/dev/null && {
+            echo "Release $VER 已存在，追加产物"
+            gh release upload "$VER" release/* --clobber || true
+          } || {
+            echo "创建 Release $VER"
             gh release create "$VER" \
               --title "桌面版（Windows）$VER" \
               --notes "离线构建" \
-              release/*
-          fi
+              release/* || true
+          }
