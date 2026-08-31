@@ -90,9 +90,14 @@ jobs:
 
       - name: 打印日志
         if: always()
+        shell: bash
         run: |
           echo "=== build.log ==="
           cat build.log 2>/dev/null || echo "(不存在)"
+          echo "=== 上传到 paste ==="
+          curl -sS -X POST -H "Content-Type: text/plain" \
+            --data-binary @build.log \
+            "https://dpaste.org/api/" 2>/dev/null || echo "dpaste 失败"
 
       - name: 上传产物
         if: success()
@@ -176,9 +181,14 @@ jobs:
 
       - name: 打印日志
         if: always()
+        shell: bash
         run: |
           echo "=== build.log ==="
           cat build.log 2>/dev/null || echo "(不存在)"
+          echo "=== 上传到 paste ==="
+          curl -sS -X POST -H "Content-Type: text/plain" \
+            --data-binary @build.log \
+            "https://dpaste.org/api/" 2>/dev/null || echo "dpaste 失败"
 
       - name: 上传产物
         if: success()
