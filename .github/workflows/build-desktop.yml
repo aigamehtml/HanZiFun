@@ -77,14 +77,25 @@ jobs:
         shell: bash
         run: |
           set -x
-          # 注入图标配置
           node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.build.icon='build/icons/icon.png';fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('icon set');"
-          # 打包，记录退出码
           npx electron-builder --linux --publish never 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
-          echo "electron-builder exit code: $RC"
-          ls -la release/ 2>/dev/null || echo "release/ 目录不存在"
+          echo "exit_code=$RC"
+          if [ $RC -ne 0 ]; then
+            echo "=== 打包失败，错误信息 ==="
+            tail -50 build.log
+          fi
+          ls -la release/ 2>/dev/null || echo "release/ 不存在"
           exit $RC
+
+      - name: 调试输出日志
+        if: always()
+        shell: bash
+        run: |
+          echo "=== build.log 内容 ==="
+          cat build.log 2>/dev/null || echo "(build.log 不存在)"
+          echo "=== package.json build 配置 ==="
+          node -e "const p=require('./package.json');console.log(JSON.stringify(p.build,null,2))" 2>/dev/null || echo "(package.json 读取失败)"
 
       - name: 上传构建日志
         if: always()
@@ -109,15 +120,22 @@ jobs:
       - name: 发布 Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
-          ls -lh release/
-          if gh release view "$VER" >/dev/null 2>&1; then
+          echo "发布到 $VER"
+          echo "release/ 目录:"
+          ls -la release/ 2>/dev/null || { echo "release/ 不存在，跳过发布"; exit 0; }
+          if gh release view "$VER" 2>/dev/null; then
+            echo "Release 已存在，追加产物"
             gh release upload "$VER" release/* --clobber
           else
-            gh release create "$VER" --title "桌面版（Linux）$VER" \
-              --notes "离线构建，96 笔顺包，9574 汉字" release/*
+            echo "创建新 Release"
+            gh release create "$VER" \
+              --title "桌面版（Linux）$VER" \
+              --notes "离线构建，96 笔顺包，9574 汉字" \
+              release/*
           fi
 
   build-windows:
@@ -177,9 +195,22 @@ jobs:
           node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.build.icon='build/icons/icon.png';fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('icon set');"
           npx electron-builder --win --publish never 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
-          echo "exit: $RC"
+          echo "exit_code=$RC"
+          if [ $RC -ne 0 ]; then
+            echo "=== 打包失败 ==="
+            tail -50 build.log
+          fi
           ls -la release/ 2>/dev/null || echo "release/ 不存在"
           exit $RC
+
+      - name: 调试输出日志
+        if: always()
+        shell: bash
+        run: |
+          echo "=== build.log 内容 ==="
+          cat build.log 2>/dev/null || echo "(build.log 不存在)"
+          echo "=== package.json build 配置 ==="
+          node -e "const p=require('./package.json');console.log(JSON.stringify(p.build,null,2))" 2>/dev/null || echo "(读取失败)"
 
       - name: 上传构建日志
         if: always()
@@ -204,12 +235,19 @@ jobs:
       - name: 发布 Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
-          if gh release view "$VER" >/dev/null 2>&1; then
+          echo "发布到 $VER"
+          ls -la release/ 2>/dev/null || { echo "release/ 不存在"; exit 0; }
+          if gh release view "$VER" 2>/dev/null; then
+            echo "追加产物"
             gh release upload "$VER" release/* --clobber
           else
-            gh release create "$VER" --title "桌面版（Windows）$VER" \
-              --notes "离线构建，96 笔顺包，9574 汉字" release/*
+            echo "创建新 Release"
+            gh release create "$VER" \
+              --title "桌面版（Windows）$VER" \
+              --notes "离线构建，96 笔顺包，9574 汉字" \
+              release/*
           fi
