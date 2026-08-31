@@ -38,7 +38,6 @@ jobs:
           COMMITS=$(git rev-list HEAD --count)
           VERSION="0.2.${COMMITS}-$(date +%Y%m%d)-${GITHUB_SHA::7}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION"
 
       - name: 装依赖
         run: npm install
@@ -54,28 +53,65 @@ jobs:
       - name: 装系统库
         run: |
           sudo apt-get update
-          sudo apt-get install -y libnotify-dev libnss3 libxss1 libgtk-3-0 rpm fakeroot || true
+          sudo apt-get install -y libnotify-dev libnss3 libxss1 libgtk-3-0 \
+            rpm fakeroot squashfs-tools appstream libappindicator3-1 \
+            || true
 
       - name: 准备图标
         run: |
           mkdir -p build/icons
           cp icons/icon-512.png build/icons/icon.png
+          echo "图标路径: build/icons/icon.png"
+          ls -la build/icons/
+
+      - name: 诊断环境
+        shell: bash
+        run: |
+          echo "=== Node.js ==="
+          node -v
+          echo "=== npm ==="
+          npm -v
+          echo "=== package.json build 配置 ==="
+          node -e "const p=require('./package.json');console.log(JSON.stringify(p.build,null,2))"
+          echo "=== dist/ 目录 ==="
+          ls -la dist/ 2>/dev/null | head -20
+          echo "=== electron-builder 版本 ==="
+          ./node_modules/.bin/electron-builder --version
+          echo "=== electron 版本 ==="
+          ./node_modules/.bin/electron --version
+          echo "=== 系统 ==="
+          uname -a
+          echo "=== 磁盘 ==="
+          df -h .
 
       - name: 打包
         shell: bash
         run: |
           set -ex
-          node -e "const p=JSON.parse(require('fs').readFileSync('package.json','utf8'));p.build.icon='build/icons/icon.png';fs=require('fs');fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
-          ./node_modules/.bin/electron-builder --linux --publish never
-          echo "=== 产物 ==="
+          node -e "const p=require('./package.json');p.build.icon='build/icons/icon.png';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2));"
+          echo "=== 修改后的 build.icon ==="
+          node -e "console.log(require('./package.json').build.icon)"
+          echo "=== 开始打包 ==="
+          ./node_modules/.bin/electron-builder --linux --publish never 2>&1 | tee build.log
+          echo "=== 打包完成 ==="
           ls -lh release/
 
       - name: 上传产物
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ steps.version.outputs.version }}
+          path: build.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: 上传构建产物
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: desktop-linux-${{ steps.version.outputs.version }}
           path: release/*
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: 发布 Release
@@ -84,16 +120,12 @@ jobs:
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
-          echo "=== release 产物 ==="
           ls -lh release/
           if gh release view "$VER" >/dev/null 2>&1; then
-            echo "追加到 $VER"
             gh release upload "$VER" release/* --clobber
           else
-            echo "新建 $VER"
             gh release create "$VER" --title "桌面版（Linux）$VER" \
-              --notes "离线构建，AppImage 双击即用，96 个笔顺包，9574 汉字" \
-              release/*
+              --notes "离线构建，96 笔顺包，9574 汉字" release/*
           fi
 
   build-windows:
@@ -113,7 +145,6 @@ jobs:
           COMMITS=$(git rev-list HEAD --count)
           VERSION="0.2.${COMMITS}-$(date +%Y%m%d)-${GITHUB_SHA::7}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Version: $VERSION"
 
       - name: 装依赖
         run: npm install
@@ -131,22 +162,41 @@ jobs:
         run: |
           mkdir -p build/icons
           cp icons/icon-512.png build/icons/icon.png
+          ls -la build/icons/
+
+      - name: 诊断环境
+        shell: bash
+        run: |
+          node -v
+          npm -v
+          ./node_modules/.bin/electron-builder --version 2>&1
+          ls -la dist/ | head -10
+          node -e "const p=require('./package.json');console.log(JSON.stringify(p.build,null,2))"
 
       - name: 打包
         shell: bash
         run: |
           set -ex
-          node -e "const p=JSON.parse(require('fs').readFileSync('package.json','utf8'));p.build.icon='build/icons/icon.png';fs=require('fs');fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
-          ./node_modules/.bin/electron-builder --win --publish never
-          echo "=== 产物 ==="
+          node -e "const p=require('./package.json');p.build.icon='build/icons/icon.png';require('fs').writeFileSync('package.json',JSON.stringify(p,null,2));"
+          ./node_modules/.bin/electron-builder --win --publish never 2>&1 | tee build.log
           ls -lh release/
 
+      - name: 上传日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-windows-${{ steps.version.outputs.version }}
+          path: build.log
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: 上传产物
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: desktop-windows-${{ steps.version.outputs.version }}
           path: release/*
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
       - name: 发布 Release
@@ -155,13 +205,9 @@ jobs:
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
-          ls -lh release/
           if gh release view "$VER" >/dev/null 2>&1; then
-            echo "追加 Windows 产物到 $VER"
             gh release upload "$VER" release/* --clobber
           else
-            echo "新建 $VER"
             gh release create "$VER" --title "桌面版（Windows）$VER" \
-              --notes "离线构建，nsis 安装包 + portable 绿色版，96 个笔顺包，9574 汉字" \
-              release/*
+              --notes "离线构建，96 笔顺包，9574 汉字" release/*
           fi

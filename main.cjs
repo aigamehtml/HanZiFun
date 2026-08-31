@@ -7,11 +7,7 @@ const path = require('path');
 const fs = require('fs');
 
 function getResPath(subPath) {
-  // 打包后文件在 app.asar 内，__dirname 自动解析到 asar 内
-  if (app.isPackaged) {
-    // electron-builder 会把 dist/ 打进 asar，路径直接拼接即可
-    return path.join(__dirname, '..', 'dist', subPath);
-  }
+  // dist/ 和 main.cjs 同级，打包后都在 app.asar 根目录
   return path.join(__dirname, 'dist', subPath);
 }
 
