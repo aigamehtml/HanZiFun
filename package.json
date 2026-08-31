@@ -28,6 +28,7 @@
   "build": {
     "appId": "cn.aigamehtml.hanzifun",
     "productName": "汉字Fun",
+    "electronVersion": "30.0.0",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": { "output": "release" },
     "files": [
