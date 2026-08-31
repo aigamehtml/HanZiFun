@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: desktop-${{ github.ref }}
@@ -78,26 +79,34 @@ jobs:
         shell: bash
         run: |
           set -x
-          echo "运行 npx electron-builder --linux --publish never"
           npx electron-builder --linux --publish never --debug 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
-          echo "electron-builder exit: $RC"
-          if [ $RC -ne 0 ]; then
-            echo "FAIL: electron-builder failed"
-            tail -30 build.log
-          fi
+          echo "exit: $RC"
           exit $RC
 
-      - name: 打印日志
+      - name: 输出日志到 Step Summary
         if: always()
-        shell: bash
-        run: |
-          echo "=== build.log ==="
-          cat build.log 2>/dev/null || echo "(不存在)"
-          echo "=== 上传到 paste ==="
-          curl -sS -X POST -H "Content-Type: text/plain" \
-            --data-binary @build.log \
-            "https://dpaste.org/api/" 2>/dev/null || echo "dpaste 失败"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('build.log')) {
+              const log = fs.readFileSync('build.log', 'utf8');
+              const truncated = log.length > 5000 ? log.slice(-5000) : log;
+              core.summary
+                .addHeading('Build Log (last 5000 chars)')
+                .addCodeBlock(truncated, 'text')
+                .write();
+            }
+
+      - name: 上传日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-linux-${{ steps.version.outputs.version }}
+          path: build.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: 上传产物
         if: success()
@@ -112,14 +121,13 @@ jobs:
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
-          echo "发布到 $VER"
-          test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物，跳过"; exit 0; }
+          test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物"; exit 0; }
           if gh release view "$VER" 2>/dev/null; then
             gh release upload "$VER" release/* --clobber
           else
             gh release create "$VER" \
               --title "桌面版（Linux）$VER" \
-              --notes "离线构建，96 笔顺包，9574 汉字" \
+              --notes "离线构建" \
               release/*
           fi
 
@@ -171,24 +179,34 @@ jobs:
         shell: bash
         run: |
           set -x
-          npx electron-builder --win --publish never 2>&1 | tee build.log
+          npx electron-builder --win --publish never --debug 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
           echo "exit: $RC"
-          if [ $RC -ne 0 ]; then
-            tail -30 build.log
-          fi
           exit $RC
 
-      - name: 打印日志
+      - name: 输出日志到 Step Summary
         if: always()
-        shell: bash
-        run: |
-          echo "=== build.log ==="
-          cat build.log 2>/dev/null || echo "(不存在)"
-          echo "=== 上传到 paste ==="
-          curl -sS -X POST -H "Content-Type: text/plain" \
-            --data-binary @build.log \
-            "https://dpaste.org/api/" 2>/dev/null || echo "dpaste 失败"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('build.log')) {
+              const log = fs.readFileSync('build.log', 'utf8');
+              const truncated = log.length > 5000 ? log.slice(-5000) : log;
+              core.summary
+                .addHeading('Build Log (last 5000 chars)')
+                .addCodeBlock(truncated, 'text')
+                .write();
+            }
+
+      - name: 上传日志
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-windows-${{ steps.version.outputs.version }}
+          path: build.log
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: 上传产物
         if: success()
@@ -203,13 +221,12 @@ jobs:
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
-          echo "发布到 $VER"
-          test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物，跳过"; exit 0; }
+          test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物"; exit 0; }
           if gh release view "$VER" 2>/dev/null; then
             gh release upload "$VER" release/* --clobber
           else
             gh release create "$VER" \
               --title "桌面版（Windows）$VER" \
-              --notes "离线构建，96 笔顺包，9574 汉字" \
+              --notes "离线构建" \
               release/*
           fi
