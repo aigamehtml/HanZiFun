@@ -21,7 +21,6 @@ env:
   ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
 
 jobs:
-  # ── Linux 打包 ──────────────────────────────────────
   build-linux:
     runs-on: ubuntu-latest
 
@@ -32,7 +31,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: 确定版本号
+      - name: 版本号
         id: version
         shell: bash
         run: |
@@ -41,65 +40,37 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
-      - name: 安装依赖
+      - name: 装依赖
         run: npm install
 
       - name: 离线构建
-        run: |
-          echo "CDN_BASE=" >> $GITHUB_ENV
-          npm run build
+        env:
+          CDN_BASE: ""
+        run: npm run build
 
-      - name: 安装 Electron 构建工具
-        run: npm install electron electron-builder --save-dev
+      - name: 装 Electron
+        run: npm install electron electron-builder
 
-      - name: 安装 Linux 系统依赖
+      - name: 装系统库
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            libnotify-dev \
-            libnss3 \
-            libxss1 \
-            libatk1.0-0 \
-            libatk-bridge2.0-0 \
-            libcups2 \
-            libdrm2 \
-            libgbm1 \
-            libgtk-3-0 \
-            libxkbcommon0 \
-            xdg-utils \
-            rpm \
-            fakeroot \
-            appstream \
-            || true
+          sudo apt-get install -y libnotify-dev libnss3 libxss1 libgtk-3-0 rpm fakeroot || true
 
-      - name: 生成应用图标
+      - name: 准备图标
         run: |
           mkdir -p build/icons
-          # 如果没有提供图标，用 Electron 默认（electron-builder 会生成）
-          if [ -f icons/icon-512.png ]; then
-            cp icons/icon-512.png build/icons/icon.png
-          fi
+          cp icons/icon-512.png build/icons/icon.png
 
-      - name: 修改 build 配置（加图标）
-        run: |
-          # 用 jq 给 build 配置加 icon
-          node -e "
-            const fs = require('fs');
-            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            p.build.icon = 'build/icons/icon.png';
-            fs.writeFileSync('package.json', JSON.stringify(p, null, 2));
-            console.log('icon set to:', p.build.icon);
-          "
-
-      - name: 打包桌面应用
+      - name: 打包
         shell: bash
         run: |
-          set -x
-          npm exec electron-builder -- --linux --publish never 2>&1 | tee build.log
-          echo "=== 打包完成 ==="
-          ls -lh release/ 2>/dev/null || echo "release/ 为空"
+          set -ex
+          node -e "const p=JSON.parse(require('fs').readFileSync('package.json','utf8'));p.build.icon='build/icons/icon.png';fs=require('fs');fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
+          ./node_modules/.bin/electron-builder --linux --publish never
+          echo "=== 产物 ==="
+          ls -lh release/
 
-      - name: 上传构建产物
+      - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
           name: desktop-linux-${{ steps.version.outputs.version }}
@@ -107,27 +78,24 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: 发布 GitHub Release
+      - name: 发布 Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          RELEASE_NAME="桌面版（Linux）v${{ steps.version.outputs.version }}"
-          NOTES="## 自动构建\n\n- 系统：Linux\n- AppImage：双击即可运行，无需安装\n- deb：dpkg 安装，适合 Ubuntu/Debian\n- 离线构建，不依赖 CDN\n- 96 个笔顺数据包全量打包\n- 9574 个汉字\n\n### 产物\n$(ls -lh release/ | tail -n +2)"
-
-          if gh release view v${{ steps.version.outputs.version }} >/dev/null 2>&1; then
-            echo "=== 追加产物到现有 Release ==="
-            gh release upload "v${{ steps.version.outputs.version }}" release/* --clobber
+          VER="v${{ steps.version.outputs.version }}"
+          echo "=== release 产物 ==="
+          ls -lh release/
+          if gh release view "$VER" >/dev/null 2>&1; then
+            echo "追加到 $VER"
+            gh release upload "$VER" release/* --clobber
           else
-            echo "=== 创建新 Release ==="
-            gh release create "v${{ steps.version.outputs.version }}" \
-              --title "$RELEASE_NAME" \
-              --notes "$NOTES" \
+            echo "新建 $VER"
+            gh release create "$VER" --title "桌面版（Linux）$VER" \
+              --notes "离线构建，AppImage 双击即用，96 个笔顺包，9574 汉字" \
               release/*
           fi
-          echo "Linux 发布完成"
 
-  # ── Windows 打包 ────────────────────────────────────
   build-windows:
     runs-on: windows-latest
 
@@ -138,55 +106,42 @@ jobs:
         with:
           node-version: 22
 
-      - name: 确定版本号
+      - name: 版本号
         id: version
         shell: bash
         run: |
-          COMMITS=$(git rev-list HEAD --count 2>/dev/null || echo "1")
+          COMMITS=$(git rev-list HEAD --count)
           VERSION="0.2.${COMMITS}-$(date +%Y%m%d)-${GITHUB_SHA::7}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
 
-      - name: 安装依赖
+      - name: 装依赖
         run: npm install
 
       - name: 离线构建
-        shell: bash
-        run: |
-          echo "CDN_BASE=" >> "$GITHUB_ENV"
-          npm run build
+        env:
+          CDN_BASE: ""
+        run: npm run build
 
-      - name: 安装 Electron 构建工具
-        run: npm install electron electron-builder --save-dev
+      - name: 装 Electron
+        run: npm install electron electron-builder
 
-      - name: 生成应用图标
+      - name: 准备图标
         shell: bash
         run: |
           mkdir -p build/icons
-          if [ -f icons/icon-512.png ]; then
-            cp icons/icon-512.png build/icons/icon.png
-          fi
+          cp icons/icon-512.png build/icons/icon.png
 
-      - name: 修改 build 配置（加图标）
+      - name: 打包
         shell: bash
         run: |
-          node -e "
-            const fs = require('fs');
-            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            p.build.icon = 'build/icons/icon.png';
-            fs.writeFileSync('package.json', JSON.stringify(p, null, 2));
-            console.log('icon set to:', p.build.icon);
-          "
+          set -ex
+          node -e "const p=JSON.parse(require('fs').readFileSync('package.json','utf8'));p.build.icon='build/icons/icon.png';fs=require('fs');fs.writeFileSync('package.json',JSON.stringify(p,null,2));"
+          ./node_modules/.bin/electron-builder --win --publish never
+          echo "=== 产物 ==="
+          ls -lh release/
 
-      - name: 打包 Windows 桌面应用
-        shell: bash
-        run: |
-          set -x
-          npm exec electron-builder -- --win --publish never 2>&1 | tee build.log
-          echo "=== 打包完成 ==="
-          ls -lh release/ 2>/dev/null || echo "release/ 为空"
-
-      - name: 上传 Windows 产物
+      - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
           name: desktop-windows-${{ steps.version.outputs.version }}
@@ -194,22 +149,19 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: 发布 Windows Release
+      - name: 发布 Release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          RELEASE_NAME="桌面版（Windows）v${{ steps.version.outputs.version }}"
-          NOTES="## 自动构建（Windows）\n\n- 系统：Windows\n- 安装包：nsis Setup 格式，支持自定义安装目录\n- 绿色版：portable 单文件，免安装直接运行\n- 离线构建，不依赖 CDN\n- 96 个笔顺数据包全量打包\n- 9574 个汉字\n\n### 产物\n$(ls -lh release/ | tail -n +2)"
-
-          if gh release view v${{ steps.version.outputs.version }} >/dev/null 2>&1; then
-            echo "=== 追加 Windows 产物到现有 Release ==="
-            gh release upload "v${{ steps.version.outputs.version }}" release/* --clobber
+          VER="v${{ steps.version.outputs.version }}"
+          ls -lh release/
+          if gh release view "$VER" >/dev/null 2>&1; then
+            echo "追加 Windows 产物到 $VER"
+            gh release upload "$VER" release/* --clobber
           else
-            echo "=== 创建新 Release ==="
-            gh release create "v${{ steps.version.outputs.version }}" \
-              --title "$RELEASE_NAME" \
-              --notes "$NOTES" \
+            echo "新建 $VER"
+            gh release create "$VER" --title "桌面版（Windows）$VER" \
+              --notes "离线构建，nsis 安装包 + portable 绿色版，96 个笔顺包，9574 汉字" \
               release/*
           fi
-          echo "Windows 发布完成"
