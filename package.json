@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Offline-first Chinese handwriting worksheet generator",
+  "main": "main.cjs",
   "scripts": {
     "dev": "npm run styles && node scripts/serve.mjs",
     "styles": "tailwindcss -i ./src/tailwind.css -o ./tailwind.css --minify",
@@ -14,13 +15,57 @@
     "data": "node scripts/build-stroke-data.mjs",
     "data:core": "node scripts/build-stroke-data.mjs --core-only",
     "build": "npm run styles && npm run assets && npm run vendor && npm run data && node scripts/build.mjs",
+    "build:offline": "CDN_BASE=\"\" npm run build",
     "build:ci": "npm run styles && npm run assets && npm run vendor && node scripts/build.mjs",
     "build:quick": "npm run styles && npm run assets && npm run vendor && npm run data:core && node scripts/build.mjs",
+    "electron:dev": "npm run build:offline && electron .",
+    "dist": "npm run build:offline && electron-builder",
+    "dist:win": "npm run build:offline && electron-builder --win",
+    "dist:mac": "npm run build:offline && electron-builder --mac",
+    "dist:linux": "npm run build:offline && electron-builder --linux",
     "check": "node --check app.js && node --check service-worker.js && node scripts/check-service-worker.mjs && node --check scripts/build-stroke-data.mjs && node --check scripts/build-content-templates.mjs && node --check scripts/build-icons.mjs && node --check scripts/build-vendor.mjs && node --check scripts/build-font.mjs && node --check scripts/build.mjs && node --check scripts/serve.mjs"
+  },
+  "build": {
+    "appId": "cn.aigamehtml.hanzifun",
+    "productName": "汉字Fun",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": { "output": "release" },
+    "files": [
+      "dist/**/*",
+      "main.cjs",
+      "preload.cjs",
+      "package.json"
+    ],
+    "extraResources": [],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": null
+    },
+    "mac": {
+      "target": ["dmg"],
+      "category": "public.app-category.education",
+      "icon": null
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Education",
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",
     "@zip.js/zip.js": "^2.8.34",
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8",
     "esbuild": "^0.25.0",
     "fflate": "^0.8.3",
     "fontkit": "^2.0.4",

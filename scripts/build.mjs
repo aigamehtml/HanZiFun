@@ -36,7 +36,9 @@ for (const file of (await readdir(path.join(root, "data"))).filter((file) => /^s
   fingerprint.update(await readFile(path.join(root, "data", file)));
 }
 const version = `v${packageVersion}-${gitCommit}-${fingerprint.digest("hex").slice(0, 10)}`;
-const cdnBase = "https://cdn.jsdelivr.net/gh/rickytan/HanZiFun@main";
+// 设置环境变量 CDN_BASE="" 构建离线版（桌面应用 / 本地部署），
+// 不设置则默认走 jsDelivr CDN（在线部署 / 网页版）
+const cdnBase = process.env.CDN_BASE !== undefined ? process.env.CDN_BASE : "https://cdn.jsdelivr.net/gh/rickytan/HanZiFun@main";
 
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
