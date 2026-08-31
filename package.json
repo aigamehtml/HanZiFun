@@ -34,25 +34,19 @@
       "dist/**/*",
       "main.cjs",
       "preload.cjs",
-      "package.json"
+      "package.json",
+      "build/icons/**/*"
     ],
     "extraResources": [],
     "win": {
       "target": [
         { "target": "nsis", "arch": ["x64"] },
         { "target": "portable", "arch": ["x64"] }
-      ],
-      "icon": null
-    },
-    "mac": {
-      "target": ["dmg"],
-      "category": "public.app-category.education",
-      "icon": null
+      ]
     },
     "linux": {
       "target": ["AppImage", "deb"],
-      "category": "Education",
-      "icon": null
+      "category": "Education"
     },
     "nsis": {
       "oneClick": false,
