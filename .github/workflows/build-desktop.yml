@@ -55,8 +55,8 @@ jobs:
           CDN_BASE: ""
         run: npm run build
 
-      - name: 装 electron-builder
-        run: npm install electron-builder@25 --save-dev
+      - name: 装 Electron + Builder
+        run: npm install electron@30 electron-builder@25 --save-dev
 
       - name: 准备图标
         run: |
@@ -68,10 +68,16 @@ jobs:
         run: |
           echo "node: $(node -v)"
           echo "npm: $(npm -v)"
-          echo "electron-builder: $(./node_modules/.bin/electron-builder --version 2>&1)"
           echo "dist/: $(test -d dist && ls dist/ | head -3 || echo NO)"
           echo "图标: $(test -f build/icons/icon.png && echo YES || echo NO)"
-          echo "electron in node_modules: $(test -d node_modules/electron && echo YES || echo NO)"
+          echo "=== npm ls electron ==="
+          npm ls electron 2>&1 || true
+          echo "=== npm ls electron-builder ==="
+          npm ls electron-builder 2>&1 || true
+          echo "=== electron binary ==="
+          ls node_modules/electron/dist/electron 2>&1 || echo "electron binary NOT FOUND"
+          echo "=== package.json build ==="
+          node -e "const p=require('./package.json');console.log(JSON.stringify(p.build,null,2))"
 
       - name: 打包
         shell: bash
@@ -87,14 +93,26 @@ jobs:
           fi
           exit $RC
 
-      - name: 上传日志
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log-linux-${{ steps.version.outputs.version }}
-          path: build.log
-          if-no-files-found: warn
-          retention-days: 7
+      - name: 打印错误日志
+        if: failure()
+        shell: bash
+        run: |
+          echo "========================================"
+          echo "=== 构建失败，完整日志如下 ==="
+          echo "========================================"
+          if [ -f build.log ]; then
+            echo "build.log 大小: $(wc -c < build.log) bytes"
+            echo "--- build.log 内容 ---"
+            cat build.log
+            echo "--- 结束 ---"
+          else
+            echo "build.log 不存在"
+          fi
+          # 把日志写到 Issue comment 方便查看
+          LOG_CONTENT=$(cat build.log 2>/dev/null || echo "no log")
+          SHORT_LOG=$(echo "$LOG_CONTENT" | tail -20)
+          echo "日志最后 20 行:"
+          echo "$SHORT_LOG"
 
       - name: 上传产物
         if: success()
@@ -145,8 +163,8 @@ jobs:
           CDN_BASE: ""
         run: npm run build
 
-      - name: 装 electron-builder
-        run: npm install electron-builder@25 --save-dev
+      - name: 装 Electron + Builder
+        run: npm install electron@30 electron-builder@25 --save-dev
 
       - name: 准备图标
         shell: bash
