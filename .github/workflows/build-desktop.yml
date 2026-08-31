@@ -35,7 +35,7 @@ env:
 
 jobs:
   build:
-    runs-on: ${{ (github.event.inputs.build_os == 'macos') && 'macos-latest' || 'ubuntu-latest' }}
+    runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
 
@@ -62,7 +62,7 @@ jobs:
           echo "Version: $VERSION"
 
       - name: 安装依赖
-        run: npm ci
+        run: npm install
 
       - name: 离线构建（资源全走本地）
         run: |
@@ -73,7 +73,7 @@ jobs:
         run: npm install electron electron-builder --save-dev
 
       - name: 打包桌面应用
-        run: npx electron-builder --linux --mac --publish never
+        run: npx electron-builder --linux --publish never
         env:
           # Electron 需要联网下载预编译二进制，给代理留路
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
@@ -98,7 +98,7 @@ jobs:
         shell: bash
         run: |
           RELEASE_NAME="桌面版 v${{ steps.version.outputs.version }}"
-          NOTES="## 自动构建\n\n- 系统：Linux / macOS （Windows 需额外 runner）\n- 离线构建，不依赖 CDN\n- 96 个笔顺数据包全量打包\n- 9574 个汉字\n\n### 产物\n$(ls release/)"
+          NOTES="## 自动构建\n\n- 系统：Linux（macOS 需额外 runner）\n- 离线构建，不依赖 CDN\n- 96 个笔顺数据包全量打包\n- 9574 个汉字\n- AppImage：双击即可运行\n- deb：dpkg 安装\n\n### 产物\n$(ls release/)"
 
           # 检查同名 tag 是否已存在
           if gh release view v${{ steps.version.outputs.version }} >/dev/null 2>&1; then
@@ -136,7 +136,7 @@ jobs:
           echo "Version: $VERSION"
 
       - name: 安装依赖
-        run: npm ci
+        run: npm install
 
       - name: 离线构建
         shell: bash

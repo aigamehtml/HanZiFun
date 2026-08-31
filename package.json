@@ -64,8 +64,7 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.3.3",
     "@zip.js/zip.js": "^2.8.34",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
+
     "esbuild": "^0.25.0",
     "fflate": "^0.8.3",
     "fontkit": "^2.0.4",
