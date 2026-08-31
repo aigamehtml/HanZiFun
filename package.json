@@ -34,9 +34,9 @@
       "dist/**/*",
       "main.cjs",
       "preload.cjs",
-      "package.json",
-      "build/icons/**/*"
+      "package.json"
     ],
+    "icon": "build/icons/icon.png",
     "extraResources": [],
     "win": {
       "target": [

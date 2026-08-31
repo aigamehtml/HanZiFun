@@ -18,6 +18,7 @@ concurrency:
 
 env:
   GH_TOKEN: ${{ github.token }}
+  GITHUB_TOKEN: ${{ github.token }}
   ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
 
 jobs:
@@ -55,12 +56,13 @@ jobs:
         run: npm run build
 
       - name: 装 Electron
-        run: npm install electron electron-builder --save-dev
+        run: npm install electron@30 electron-builder@25 --save-dev
 
       - name: 准备图标
         run: |
           mkdir -p build/icons
           cp icons/icon-512.png build/icons/icon.png
+          ls -la build/icons/
 
       - name: 诊断
         shell: bash
@@ -68,45 +70,29 @@ jobs:
           echo "node: $(node -v)"
           echo "npm: $(npm -v)"
           echo "dist/ 存在: $(test -d dist && echo YES || echo NO)"
-          echo "dist/ 大小: $(du -sh dist 2>/dev/null || echo N/A)"
-          echo "图标: $(test -f build/icons/icon.png && echo YES || echo NO)"
-          node -e "const p=require('./package.json');console.log('build.files:', JSON.stringify(p.build.files))"
-          node -e "const p=require('./package.json');console.log('main:', p.main)"
+          echo "dist/ 大小: $(du -sh dist 2>/dev/null)"
+          echo "图标存在: $(test -f build/icons/icon.png && echo YES || echo NO)"
+          node -e "const p=require('./package.json');console.log('build.icon:', p.build.icon);console.log('build.files:', JSON.stringify(p.build.files));console.log('main:', p.main)"
 
       - name: 打包
         shell: bash
         run: |
           set -x
-          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.build.icon='build/icons/icon.png';fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('icon set');"
-          npx electron-builder --linux --publish never 2>&1 | tee build.log
+          echo "运行 npx electron-builder --linux --publish never"
+          npx electron-builder --linux --publish never --debug 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
-          echo "exit_code=$RC"
+          echo "electron-builder exit: $RC"
           if [ $RC -ne 0 ]; then
-            echo "=== 打包失败，错误信息 ==="
-            tail -50 build.log
+            echo "FAIL: electron-builder failed"
+            tail -30 build.log
           fi
-          ls -la release/ 2>/dev/null || echo "release/ 不存在"
           exit $RC
 
-      - name: 调试输出日志
+      - name: 打印日志
         if: always()
-        shell: bash
         run: |
-          echo "=== build.log 内容 ==="
-          cat build.log 2>/dev/null || echo "(build.log 不存在)"
-          echo "=== package.json build 配置 ==="
-          node -e "const p=require('./package.json');console.log(JSON.stringify(p.build,null,2))" 2>/dev/null || echo "(package.json 读取失败)"
-
-      - name: 上传构建日志
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-${{ steps.version.outputs.version }}
-          path: |
-            build.log
-            package.json
-          if-no-files-found: ignore
-          retention-days: 7
+          echo "=== build.log ==="
+          cat build.log 2>/dev/null || echo "(不存在)"
 
       - name: 上传产物
         if: success()
@@ -118,20 +104,14 @@ jobs:
           retention-days: 14
 
       - name: 发布 Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
           echo "发布到 $VER"
-          echo "release/ 目录:"
-          ls -la release/ 2>/dev/null || { echo "release/ 不存在，跳过发布"; exit 0; }
+          test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物，跳过"; exit 0; }
           if gh release view "$VER" 2>/dev/null; then
-            echo "Release 已存在，追加产物"
             gh release upload "$VER" release/* --clobber
           else
-            echo "创建新 Release"
             gh release create "$VER" \
               --title "桌面版（Linux）$VER" \
               --notes "离线构建，96 笔顺包，9574 汉字" \
@@ -156,12 +136,6 @@ jobs:
           VERSION="0.2.${COMMITS}-$(date +%Y%m%d)-${GITHUB_SHA::7}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: 装系统库
-        shell: bash
-        run: |
-          # Windows 不需要额外系统库
-          echo "Windows runner - no extra system libs needed"
-
       - name: 装依赖
         run: npm install
 
@@ -171,13 +145,14 @@ jobs:
         run: npm run build
 
       - name: 装 Electron
-        run: npm install electron electron-builder --save-dev
+        run: npm install electron@30 electron-builder@25 --save-dev
 
       - name: 准备图标
         shell: bash
         run: |
           mkdir -p build/icons
           cp icons/icon-512.png build/icons/icon.png
+          ls -la build/icons/
 
       - name: 诊断
         shell: bash
@@ -185,43 +160,25 @@ jobs:
           echo "node: $(node -v)"
           echo "npm: $(npm -v)"
           echo "dist/ 存在: $(test -d dist && echo YES || echo NO)"
-          node -e "const p=require('./package.json');console.log('build.files:', JSON.stringify(p.build.files))"
-          node -e "const p=require('./package.json');console.log('main:', p.main)"
+          node -e "const p=require('./package.json');console.log('build.icon:', p.build.icon);console.log('build.files:', JSON.stringify(p.build.files))"
 
       - name: 打包
         shell: bash
         run: |
           set -x
-          node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('package.json','utf8'));p.build.icon='build/icons/icon.png';fs.writeFileSync('package.json',JSON.stringify(p,null,2));console.log('icon set');"
           npx electron-builder --win --publish never 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
-          echo "exit_code=$RC"
+          echo "exit: $RC"
           if [ $RC -ne 0 ]; then
-            echo "=== 打包失败 ==="
-            tail -50 build.log
+            tail -30 build.log
           fi
-          ls -la release/ 2>/dev/null || echo "release/ 不存在"
           exit $RC
 
-      - name: 调试输出日志
+      - name: 打印日志
         if: always()
-        shell: bash
         run: |
-          echo "=== build.log 内容 ==="
-          cat build.log 2>/dev/null || echo "(build.log 不存在)"
-          echo "=== package.json build 配置 ==="
-          node -e "const p=require('./package.json');console.log(JSON.stringify(p.build,null,2))" 2>/dev/null || echo "(读取失败)"
-
-      - name: 上传构建日志
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: logs-windows-${{ steps.version.outputs.version }}
-          path: |
-            build.log
-            package.json
-          if-no-files-found: ignore
-          retention-days: 7
+          echo "=== build.log ==="
+          cat build.log 2>/dev/null || echo "(不存在)"
 
       - name: 上传产物
         if: success()
@@ -233,19 +190,14 @@ jobs:
           retention-days: 14
 
       - name: 发布 Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GITHUB_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
           echo "发布到 $VER"
-          ls -la release/ 2>/dev/null || { echo "release/ 不存在"; exit 0; }
+          test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物，跳过"; exit 0; }
           if gh release view "$VER" 2>/dev/null; then
-            echo "追加产物"
             gh release upload "$VER" release/* --clobber
           else
-            echo "创建新 Release"
             gh release create "$VER" \
               --title "桌面版（Windows）$VER" \
               --notes "离线构建，96 笔顺包，9574 汉字" \
