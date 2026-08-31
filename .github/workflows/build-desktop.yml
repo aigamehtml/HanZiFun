@@ -8,20 +8,6 @@ on:
       - '**/*.txt'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
-    inputs:
-      build_os:
-        description: '打包目标系统'
-        required: false
-        default: 'windows'
-        type: choice
-        options:
-          - windows
-          - macos
-          - linux
-      tag_version:
-        description: '版本标签（留空自动填）'
-        required: false
-        type: string
 
 permissions:
   contents: write
@@ -32,12 +18,12 @@ concurrency:
 
 env:
   GH_TOKEN: ${{ github.token }}
+  ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
 
 jobs:
-  build:
+  # ── Linux 打包 ──────────────────────────────────────
+  build-linux:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.version.outputs.version }}
 
     steps:
       - uses: actions/checkout@v7
@@ -45,18 +31,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
 
       - name: 确定版本号
         id: version
         shell: bash
         run: |
-          # 取上一个 tag 后的 commit 数作为次版本
-          if git rev-parse v0.2.0 >/dev/null 2>&1; then
-            COMMITS=$(git rev-list v0.2.0..HEAD --count)
-          else
-            COMMITS=$(git rev-list HEAD --count)
-          fi
+          COMMITS=$(git rev-list HEAD --count)
           VERSION="0.2.${COMMITS}-$(date +%Y%m%d)-${GITHUB_SHA::7}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: $VERSION"
@@ -64,7 +44,7 @@ jobs:
       - name: 安装依赖
         run: npm install
 
-      - name: 离线构建（资源全走本地）
+      - name: 离线构建
         run: |
           echo "CDN_BASE=" >> $GITHUB_ENV
           npm run build
@@ -72,22 +52,57 @@ jobs:
       - name: 安装 Electron 构建工具
         run: npm install electron electron-builder --save-dev
 
-      - name: 打包桌面应用
-        run: npx electron-builder --linux --publish never
-        env:
-          # Electron 需要联网下载预编译二进制，给代理留路
-          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+      - name: 安装 Linux 系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libnotify-dev \
+            libnss3 \
+            libxss1 \
+            libatk1.0-0 \
+            libatk-bridge2.0-0 \
+            libcups2 \
+            libdrm2 \
+            libgbm1 \
+            libgtk-3-0 \
+            libxkbcommon0 \
+            xdg-utils \
+            rpm \
+            fakeroot \
+            appstream \
+            || true
 
-      - name: 查看产物
+      - name: 生成应用图标
+        run: |
+          mkdir -p build/icons
+          # 如果没有提供图标，用 Electron 默认（electron-builder 会生成）
+          if [ -f icons/icon-512.png ]; then
+            cp icons/icon-512.png build/icons/icon.png
+          fi
+
+      - name: 修改 build 配置（加图标）
+        run: |
+          # 用 jq 给 build 配置加 icon
+          node -e "
+            const fs = require('fs');
+            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            p.build.icon = 'build/icons/icon.png';
+            fs.writeFileSync('package.json', JSON.stringify(p, null, 2));
+            console.log('icon set to:', p.build.icon);
+          "
+
+      - name: 打包桌面应用
         shell: bash
         run: |
-          echo "=== release/ 目录 ==="
-          ls -lh release/ 2>/dev/null || echo "release/ 为空或不存在"
+          set -x
+          npm exec electron-builder -- --linux --publish never 2>&1 | tee build.log
+          echo "=== 打包完成 ==="
+          ls -lh release/ 2>/dev/null || echo "release/ 为空"
 
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
-          name: desktop-builds-${{ steps.version.outputs.version }}
+          name: desktop-linux-${{ steps.version.outputs.version }}
           path: release/*
           if-no-files-found: error
           retention-days: 14
@@ -97,26 +112,24 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          RELEASE_NAME="桌面版 v${{ steps.version.outputs.version }}"
-          NOTES="## 自动构建\n\n- 系统：Linux（macOS 需额外 runner）\n- 离线构建，不依赖 CDN\n- 96 个笔顺数据包全量打包\n- 9574 个汉字\n- AppImage：双击即可运行\n- deb：dpkg 安装\n\n### 产物\n$(ls release/)"
+          RELEASE_NAME="桌面版（Linux）v${{ steps.version.outputs.version }}"
+          NOTES="## 自动构建\n\n- 系统：Linux\n- AppImage：双击即可运行，无需安装\n- deb：dpkg 安装，适合 Ubuntu/Debian\n- 离线构建，不依赖 CDN\n- 96 个笔顺数据包全量打包\n- 9574 个汉字\n\n### 产物\n$(ls -lh release/ | tail -n +2)"
 
-          # 检查同名 tag 是否已存在
           if gh release view v${{ steps.version.outputs.version }} >/dev/null 2>&1; then
-            echo "Tag 已存在，跳过发布"
+            echo "=== 追加产物到现有 Release ==="
+            gh release upload "v${{ steps.version.outputs.version }}" release/* --clobber
           else
+            echo "=== 创建新 Release ==="
             gh release create "v${{ steps.version.outputs.version }}" \
               --title "$RELEASE_NAME" \
               --notes "$NOTES" \
               release/*
-            echo "发布成功: v${{ steps.version.outputs.version }}"
           fi
+          echo "Linux 发布完成"
 
-  # Windows 打包（单独 job，依赖 Windows runner）
+  # ── Windows 打包 ────────────────────────────────────
   build-windows:
     runs-on: windows-latest
-    needs: build
-    outputs:
-      version: ${{ steps.version.outputs.version }}
 
     steps:
       - uses: actions/checkout@v7
@@ -124,7 +137,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
 
       - name: 确定版本号
         id: version
@@ -147,17 +159,31 @@ jobs:
       - name: 安装 Electron 构建工具
         run: npm install electron electron-builder --save-dev
 
+      - name: 生成应用图标
+        shell: bash
+        run: |
+          mkdir -p build/icons
+          if [ -f icons/icon-512.png ]; then
+            cp icons/icon-512.png build/icons/icon.png
+          fi
+
+      - name: 修改 build 配置（加图标）
+        shell: bash
+        run: |
+          node -e "
+            const fs = require('fs');
+            const p = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+            p.build.icon = 'build/icons/icon.png';
+            fs.writeFileSync('package.json', JSON.stringify(p, null, 2));
+            console.log('icon set to:', p.build.icon);
+          "
+
       - name: 打包 Windows 桌面应用
         shell: bash
         run: |
-          npx electron-builder --win --publish never
-        env:
-          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
-
-      - name: 查看产物
-        shell: bash
-        run: |
-          echo "=== release/ 目录 ==="
+          set -x
+          npm exec electron-builder -- --win --publish never 2>&1 | tee build.log
+          echo "=== 打包完成 ==="
           ls -lh release/ 2>/dev/null || echo "release/ 为空"
 
       - name: 上传 Windows 产物
