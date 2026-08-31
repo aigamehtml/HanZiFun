@@ -6,7 +6,6 @@ on:
     paths-ignore:
       - '**/*.md'
       - '**/*.txt'
-      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
@@ -78,26 +77,32 @@ jobs:
       - name: 打包
         shell: bash
         run: |
-          set -x
-          npx electron-builder --linux --publish never --debug 2>&1 | tee build.log
+          npx electron-builder --linux --publish never 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
           echo "exit: $RC"
           exit $RC
 
-      - name: 输出日志到 Step Summary
+      - name: 上传日志到 Gist
         if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            if (fs.existsSync('build.log')) {
-              const log = fs.readFileSync('build.log', 'utf8');
-              const truncated = log.length > 5000 ? log.slice(-5000) : log;
-              core.summary
-                .addHeading('Build Log (last 5000 chars)')
-                .addCodeBlock(truncated, 'text')
-                .write();
-            }
+        shell: bash
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -f build.log ]; then echo "no build.log"; exit 0; fi
+          python3 -c "
+          import json, os, urllib.request
+          log = open('build.log').read()
+          data = json.dumps({'description': 'HanZiFun build log', 'public': True, 'files': {'build.log': {'content': log}}}).encode()
+          req = urllib.request.Request('https://api.github.com/gists', data=data, method='POST')
+          req.add_header('Content-Type', 'application/json')
+          req.add_header('Authorization', 'token ' + os.environ.get('TOKEN', ''))
+          try:
+              resp = urllib.request.urlopen(req)
+              gist = json.loads(resp.read())
+              print('GIST_URL:', gist.get('html_url', ''))
+          except Exception as e:
+              print('GIST_ERROR:', str(e))
+          " 2>&1
 
       - name: 上传日志
         if: always()
@@ -178,26 +183,32 @@ jobs:
       - name: 打包
         shell: bash
         run: |
-          set -x
-          npx electron-builder --win --publish never --debug 2>&1 | tee build.log
+          npx electron-builder --win --publish never 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
           echo "exit: $RC"
           exit $RC
 
-      - name: 输出日志到 Step Summary
+      - name: 上传日志到 Gist
         if: always()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            if (fs.existsSync('build.log')) {
-              const log = fs.readFileSync('build.log', 'utf8');
-              const truncated = log.length > 5000 ? log.slice(-5000) : log;
-              core.summary
-                .addHeading('Build Log (last 5000 chars)')
-                .addCodeBlock(truncated, 'text')
-                .write();
-            }
+        shell: bash
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          if [ ! -f build.log ]; then echo "no build.log"; exit 0; fi
+          python3 -c "
+          import json, os, urllib.request
+          log = open('build.log').read()
+          data = json.dumps({'description': 'HanZiFun build log', 'public': True, 'files': {'build.log': {'content': log}}}).encode()
+          req = urllib.request.Request('https://api.github.com/gists', data=data, method='POST')
+          req.add_header('Content-Type', 'application/json')
+          req.add_header('Authorization', 'token ' + os.environ.get('TOKEN', ''))
+          try:
+              resp = urllib.request.urlopen(req)
+              gist = json.loads(resp.read())
+              print('GIST_URL:', gist.get('html_url', ''))
+          except Exception as e:
+              print('GIST_ERROR:', str(e))
+          " 2>&1
 
       - name: 上传日志
         if: always()
