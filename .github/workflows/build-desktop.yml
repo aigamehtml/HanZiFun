@@ -1,0 +1,189 @@
+name: Build Desktop App
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - '**/*.txt'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+    inputs:
+      build_os:
+        description: '打包目标系统'
+        required: false
+        default: 'windows'
+        type: choice
+        options:
+          - windows
+          - macos
+          - linux
+      tag_version:
+        description: '版本标签（留空自动填）'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  build:
+    runs-on: ${{ (github.event.inputs.build_os == 'macos') && 'macos-latest' || 'ubuntu-latest' }}
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 确定版本号
+        id: version
+        shell: bash
+        run: |
+          # 取上一个 tag 后的 commit 数作为次版本
+          if git rev-parse v0.2.0 >/dev/null 2>&1; then
+            COMMITS=$(git rev-list v0.2.0..HEAD --count)
+          else
+            COMMITS=$(git rev-list HEAD --count)
+          fi
+          VERSION="0.2.${COMMITS}-$(date +%Y%m%d)-${GITHUB_SHA::7}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 离线构建（资源全走本地）
+        run: |
+          echo "CDN_BASE=" >> $GITHUB_ENV
+          npm run build
+
+      - name: 安装 Electron 构建工具
+        run: npm install electron electron-builder --save-dev
+
+      - name: 打包桌面应用
+        run: npx electron-builder --linux --mac --publish never
+        env:
+          # Electron 需要联网下载预编译二进制，给代理留路
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+
+      - name: 查看产物
+        shell: bash
+        run: |
+          echo "=== release/ 目录 ==="
+          ls -lh release/ 2>/dev/null || echo "release/ 为空或不存在"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-builds-${{ steps.version.outputs.version }}
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: 发布 GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          RELEASE_NAME="桌面版 v${{ steps.version.outputs.version }}"
+          NOTES="## 自动构建\n\n- 系统：Linux / macOS （Windows 需额外 runner）\n- 离线构建，不依赖 CDN\n- 96 个笔顺数据包全量打包\n- 9574 个汉字\n\n### 产物\n$(ls release/)"
+
+          # 检查同名 tag 是否已存在
+          if gh release view v${{ steps.version.outputs.version }} >/dev/null 2>&1; then
+            echo "Tag 已存在，跳过发布"
+          else
+            gh release create "v${{ steps.version.outputs.version }}" \
+              --title "$RELEASE_NAME" \
+              --notes "$NOTES" \
+              release/*
+            echo "发布成功: v${{ steps.version.outputs.version }}"
+          fi
+
+  # Windows 打包（单独 job，依赖 Windows runner）
+  build-windows:
+    runs-on: windows-latest
+    needs: build
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: 确定版本号
+        id: version
+        shell: bash
+        run: |
+          COMMITS=$(git rev-list HEAD --count 2>/dev/null || echo "1")
+          VERSION="0.2.${COMMITS}-$(date +%Y%m%d)-${GITHUB_SHA::7}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Version: $VERSION"
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 离线构建
+        shell: bash
+        run: |
+          echo "CDN_BASE=" >> "$GITHUB_ENV"
+          npm run build
+
+      - name: 安装 Electron 构建工具
+        run: npm install electron electron-builder --save-dev
+
+      - name: 打包 Windows 桌面应用
+        shell: bash
+        run: |
+          npx electron-builder --win --publish never
+        env:
+          ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+
+      - name: 查看产物
+        shell: bash
+        run: |
+          echo "=== release/ 目录 ==="
+          ls -lh release/ 2>/dev/null || echo "release/ 为空"
+
+      - name: 上传 Windows 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-windows-${{ steps.version.outputs.version }}
+          path: release/*
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: 发布 Windows Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          RELEASE_NAME="桌面版（Windows）v${{ steps.version.outputs.version }}"
+          NOTES="## 自动构建（Windows）\n\n- 系统：Windows\n- 安装包：nsis Setup 格式，支持自定义安装目录\n- 绿色版：portable 单文件，免安装直接运行\n- 离线构建，不依赖 CDN\n- 96 个笔顺数据包全量打包\n- 9574 个汉字\n\n### 产物\n$(ls -lh release/ | tail -n +2)"
+
+          if gh release view v${{ steps.version.outputs.version }} >/dev/null 2>&1; then
+            echo "=== 追加 Windows 产物到现有 Release ==="
+            gh release upload "v${{ steps.version.outputs.version }}" release/* --clobber
+          else
+            echo "=== 创建新 Release ==="
+            gh release create "v${{ steps.version.outputs.version }}" \
+              --title "$RELEASE_NAME" \
+              --notes "$NOTES" \
+              release/*
+          fi
+          echo "Windows 发布完成"
