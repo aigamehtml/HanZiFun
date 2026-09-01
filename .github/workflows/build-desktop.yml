@@ -49,38 +49,76 @@ jobs:
       - name: 装依赖并构建前端
         env:
           CDN_BASE: ""
-        run: npm install && npm run build
+        shell: bash
+        run: |
+          set -e
+          echo "=== npm install ==="
+          npm install 2>&1 | tail -5
+          echo "=== npm run build ==="
+          npm run build 2>&1 | tail -10
+          echo "=== dist/ check ==="
+          ls -la dist/ 2>&1 | head -5
+          echo "npm run build: done"
 
       - name: 装 electron-builder
-        run: npm install electron-builder@25 --save-dev
+        shell: bash
+        run: |
+          set -e
+          npm install electron-builder@25 --save-dev 2>&1 | tail -5
+          echo "electron-builder version: $(./node_modules/.bin/electron-builder --version 2>&1)"
+          echo "node_modules/.bin/electron-builder: $(ls -la node_modules/.bin/electron-builder 2>&1)"
 
       - name: 准备图标
         run: |
           mkdir -p build/icons
           cp icons/icon-512.png build/icons/icon.png
+          echo "icon: $(ls -la build/icons/icon.png 2>&1)"
 
       - name: 诊断
         shell: bash
         run: |
           echo "node: $(node -v)"
           echo "npm: $(npm -v)"
-          echo "dist/: $(test -d dist && ls dist/ | head -3 || echo NO)"
-          echo "图标: $(test -f build/icons/icon.png && echo YES || echo NO)"
+          echo "dist/: $(test -d dist && echo YES || echo NO)"
+          echo "main.cjs: $(test -f main.cjs && echo YES || echo NO)"
+          echo "preload.cjs: $(test -f preload.cjs && echo YES || echo NO)"
+          echo "icon: $(test -f build/icons/icon.png && echo YES || echo NO)"
+          echo "=== package.json build config ==="
+          node -e "const p=require('./package.json');console.log(JSON.stringify(p.build,null,2))"
+          echo "=== npm ls ==="
           npm ls electron-builder 2>&1 || true
+          npm ls electron 2>&1 || true
 
       - name: 打包
+        id: pack
         shell: bash
         run: |
+          set -e
+          echo "=== Starting electron-builder ==="
           ./node_modules/.bin/electron-builder --linux deb --publish never 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
           echo "exit: $RC"
           if [ $RC -eq 0 ]; then
-            ls -la release/
+            echo "=== SUCCESS ==="
+            ls -la release/ 2>&1
           else
-            echo "=== build.log tail ==="
-            tail -50 build.log
+            echo "=== FAILED ==="
+            cat build.log >> "$GITHUB_STEP_SUMMARY"
           fi
           exit $RC
+
+      - name: 打印日志到Summary
+        if: failure()
+        shell: bash
+        run: |
+          echo "## 构建失败日志" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f build.log ]; then
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+            cat build.log >> "$GITHUB_STEP_SUMMARY"
+            echo '```' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "build.log not found" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: 上传日志
         if: failure()
