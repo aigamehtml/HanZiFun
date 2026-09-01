@@ -95,7 +95,7 @@ jobs:
         run: |
           set -e
           echo "=== Starting electron-builder ==="
-          ./node_modules/.bin/electron-builder --linux deb --publish never 2>&1 | tee build.log
+          ./node_modules/.bin/electron-builder --linux tar.gz --publish never 2>&1 | tee build.log
           RC=${PIPESTATUS[0]}
           echo "exit: $RC"
           if [ $RC -eq 0 ]; then
