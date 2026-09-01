@@ -107,6 +107,18 @@ jobs:
           fi
           exit $RC
 
+      - name: 上传日志到Issue
+        if: failure()
+        shell: bash
+        run: |
+          if [ -f build.log ]; then
+            LOG=$(cat build.log)
+            gh issue create \
+              --title "Linux构建失败日志 ${GITHUB_SHA::7}" \
+              --body "### build.log\n\`\`\`\n${LOG}\n\`\`\`" \
+              --label "ci-failure" 2>&1 || true
+          fi
+
       - name: 打印日志到Summary
         if: failure()
         shell: bash
