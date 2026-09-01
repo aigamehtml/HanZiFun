@@ -149,27 +149,40 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: 发布 Release
+      - name: 发布 Release（Linux）
         if: success()
         shell: bash
+        env:
+          RELEASE_VER: v${{ steps.version.outputs.version }}
         run: |
-          VER="v${{ steps.version.outputs.version }}"
           test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物"; exit 0; }
-          echo "=== gh auth status ==="
-          gh auth status 2>&1 || true
-          echo "=== gh release view ==="
-          gh release view "$VER" 2>&1 || true
-          echo "=== 尝试发布 ==="
-          if gh release view "$VER" 2>/dev/null; then
-            echo "Release $VER 已存在，追加产物"
-            gh release upload "$VER" release/* --clobber 2>&1 || echo "上传失败"
-          else
-            echo "创建 Release $VER"
-            gh release create "$VER" \
-              --title "桌面版（Linux）$VER" \
-              --notes "离线构建 - tar.gz格式" \
-              release/* 2>&1 || echo "创建失败"
+          echo "=== 产物列表 ==="
+          ls -la release/
+
+          # 检查Release是否存在
+          HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/aigamehtml/HanZiFun/releases/tags/$RELEASE_VER")
+          echo "Release存在状态: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "创建 Release..."
+            curl -sS -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"tag_name\":\"$RELEASE_VER\",\"name\":\"桌面版（Linux）$RELEASE_VER\",\"body\":\"离线构建 - tar.gz格式\"}" \
+              "https://api.github.com/repos/aigamehtml/HanZiFun/releases" 2>&1
           fi
+
+          # 上传每个产物
+          for f in release/*; do
+            echo "上传 $(basename "$f")..."
+            curl -sS -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary "@$f" \
+              "https://uploads.github.com/repos/aigamehtml/HanZiFun/releases/tags/$RELEASE_VER/assets?name=$(basename "$f")" 2>&1
+          done
 
   build-windows:
     runs-on: windows-latest
@@ -220,22 +233,35 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: 发布 Release
+      - name: 发布 Release（Windows）
         if: success()
         shell: bash
+        env:
+          RELEASE_VER: v${{ steps.version.outputs.version }}
         run: |
-          VER="v${{ steps.version.outputs.version }}"
           test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物"; exit 0; }
-          echo "=== gh auth status ==="
-          gh auth status 2>&1 || true
-          echo "=== 尝试发布 ==="
-          if gh release view "$VER" 2>/dev/null; then
-            echo "Release $VER 已存在，追加产物"
-            gh release upload "$VER" release/* --clobber 2>&1 || echo "上传失败"
-          else
-            echo "创建 Release $VER"
-            gh release create "$VER" \
-              --title "桌面版（Windows）$VER" \
-              --notes "离线构建 - NSIS+Portable" \
-              release/* 2>&1 || echo "创建失败"
+          echo "=== 产物列表 ==="
+          ls -la release/
+
+          HTTP_CODE=$(curl -sS -o /dev/null -w "%{http_code}" \
+            -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/aigamehtml/HanZiFun/releases/tags/$RELEASE_VER")
+          echo "Release存在状态: $HTTP_CODE"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "创建 Release..."
+            curl -sS -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"tag_name\":\"$RELEASE_VER\",\"name\":\"桌面版（Windows）$RELEASE_VER\",\"body\":\"离线构建 - NSIS+Portable\"}" \
+              "https://api.github.com/repos/aigamehtml/HanZiFun/releases" 2>&1
           fi
+
+          for f in release/*; do
+            echo "上传 $(basename "$f")..."
+            curl -sS -X POST \
+              -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Content-Type: application/octet-stream" \
+              --data-binary "@$f" \
+              "https://uploads.github.com/repos/aigamehtml/HanZiFun/releases/tags/$RELEASE_VER/assets?name=$(basename "$f")" 2>&1
+          done
