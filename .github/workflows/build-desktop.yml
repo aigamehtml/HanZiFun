@@ -107,30 +107,29 @@ jobs:
           fi
           exit $RC
 
-      - name: 上传日志到Issue
+      - name: 上传日志到Summary
         if: failure()
         shell: bash
         run: |
-          if [ -f build.log ]; then
-            LOG=$(cat build.log)
-            gh issue create \
-              --title "Linux构建失败日志 ${GITHUB_SHA::7}" \
-              --body "### build.log\n\`\`\`\n${LOG}\n\`\`\`" \
-              --label "ci-failure" 2>&1 || true
-          fi
-
-      - name: 打印日志到Summary
-        if: failure()
-        shell: bash
-        run: |
-          echo "## 构建失败日志" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 诊断信息" >> "$GITHUB_STEP_SUMMARY"
+          echo "node: $(node -v)" >> "$GITHUB_STEP_SUMMARY"
+          echo "npm: $(npm -v)" >> "$GITHUB_STEP_SUMMARY"
+          echo "electron-builder: $(./node_modules/.bin/electron-builder --version 2>&1)" >> "$GITHUB_STEP_SUMMARY"
+          echo "dist/: $(ls dist/ 2>/dev/null | head -5)" >> "$GITHUB_STEP_SUMMARY"
+          echo "build/icons/: $(ls build/icons/ 2>/dev/null)" >> "$GITHUB_STEP_SUMMARY"
+          echo "release/: $(ls release/ 2>/dev/null | head -5)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## 构建日志 (build.log)" >> "$GITHUB_STEP_SUMMARY"
           if [ -f build.log ]; then
             echo '```' >> "$GITHUB_STEP_SUMMARY"
             cat build.log >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "build.log not found" >> "$GITHUB_STEP_SUMMARY"
           fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## gh run view --log-failed" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          gh run view $GITHUB_RUN_ID --log-failed 2>&1 | tail -200 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: 上传日志
         if: failure()
