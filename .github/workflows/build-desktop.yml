@@ -149,22 +149,27 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: 发布 Release（非阻塞）
+      - name: 发布 Release
         if: success()
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
           test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物"; exit 0; }
-          gh release view "$VER" 2>/dev/null && {
+          echo "=== gh auth status ==="
+          gh auth status 2>&1 || true
+          echo "=== gh release view ==="
+          gh release view "$VER" 2>&1 || true
+          echo "=== 尝试发布 ==="
+          if gh release view "$VER" 2>/dev/null; then
             echo "Release $VER 已存在，追加产物"
-            gh release upload "$VER" release/* --clobber || true
-          } || {
+            gh release upload "$VER" release/* --clobber 2>&1 || echo "上传失败"
+          else
             echo "创建 Release $VER"
             gh release create "$VER" \
               --title "桌面版（Linux）$VER" \
-              --notes "离线构建" \
-              release/* || true
-          }
+              --notes "离线构建 - tar.gz格式" \
+              release/* 2>&1 || echo "创建失败"
+          fi
 
   build-windows:
     runs-on: windows-latest
@@ -215,19 +220,22 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-      - name: 发布 Release（非阻塞）
+      - name: 发布 Release
         if: success()
         shell: bash
         run: |
           VER="v${{ steps.version.outputs.version }}"
           test -d release && test "$(ls -A release/ 2>/dev/null)" || { echo "无产物"; exit 0; }
-          gh release view "$VER" 2>/dev/null && {
+          echo "=== gh auth status ==="
+          gh auth status 2>&1 || true
+          echo "=== 尝试发布 ==="
+          if gh release view "$VER" 2>/dev/null; then
             echo "Release $VER 已存在，追加产物"
-            gh release upload "$VER" release/* --clobber || true
-          } || {
+            gh release upload "$VER" release/* --clobber 2>&1 || echo "上传失败"
+          else
             echo "创建 Release $VER"
             gh release create "$VER" \
               --title "桌面版（Windows）$VER" \
-              --notes "离线构建" \
-              release/* || true
-          }
+              --notes "离线构建 - NSIS+Portable" \
+              release/* 2>&1 || echo "创建失败"
+          fi
